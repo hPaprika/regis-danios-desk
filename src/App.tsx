@@ -1,14 +1,43 @@
-import { Button } from '@/components/ui/button'
-import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { SWRConfig } from "swr"
+import { AuthProvider } from "@/contexts/AuthContext"
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
+import { Layout } from "@/components/layout/layout"
+import { LoginForm } from "@/components/auth/login-form"
+import { DashboardPage } from "@/components/pages/dashboard-page"
+import { CounterPage } from "@/components/pages/counter-page"
+import { SiberiaPage } from "@/components/pages/siberia-page"
+import { ReportsPage } from "@/components/pages/reports-page"
 
 function App() {
-
   return (
-    <>
-      <div className="flex min-h-svh flex-col items-center justify-center">
-        <Button>Click me</Button>
-      </div>
-    </>
+    <SWRConfig
+      value={{
+        revalidateOnFocus: false,
+        revalidateOnReconnect: true,
+      }}
+    >
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginForm />} />
+            <Route
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/counter" element={<CounterPage />} />
+              <Route path="/siberia" element={<SiberiaPage />} />
+              <Route path="/reports" element={<ReportsPage />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </SWRConfig>
   )
 }
 

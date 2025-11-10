@@ -1,12 +1,13 @@
-
-
 import { useState } from "react"
-import { Download, Printer, Package } from "lucide-react"
+import { Printer, Package, FileText, Loader } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ChartCard } from "@/components/chart-card"
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { useReportData } from "@/hooks/useReportData"
+import { downloadPDFReport } from "@/lib/pdf-generator"
+import type { ReportData } from "@/components/pdf/ReportDocument"
 
 const months = [
   { value: "01", label: "Enero" },
@@ -23,58 +24,62 @@ const months = [
   { value: "12", label: "Diciembre" },
 ]
 
+const getMonthName = (month: string) => {
+  return months.find(m => m.value === month)?.label || 'Desconocido'
+}
+
 const years = [
   { value: "2024", label: "2024" },
   { value: "2025", label: "2025" },
 ]
 
-// Mock data for October 2024
-const reportData = {
-  month: "Octubre",
-  year: "2024",
-  stats: {
-    total: 145,
-    counter: 98,
-    siberia: 47,
-    signed: 76,
-  },
-  byAirline: [
-    { name: "LATAM", value: 45 },
-    { name: "Sky Airline", value: 32 },
-    { name: "VIVA Air", value: 28 },
-    { name: "Otros", value: 40 },
-  ],
-  byType: [
-    { name: "Rotura", value: 35 },
-    { name: "Rasguño", value: 28 },
-    { name: "Rueda dañada", value: 22 },
-    { name: "Cierre roto", value: 30 },
-    { name: "Otros", value: 30 },
-  ],
-  topFlights: [
-    { flight: "2328", damages: 12 },
-    { flight: "2010", damages: 10 },
-    { flight: "1856", damages: 8 },
-    { flight: "2145", damages: 7 },
-    { flight: "1923", damages: 6 },
-  ],
-}
-
 const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"]
 
 export function ReportsPage() {
-  const [selectedMonth, setSelectedMonth] = useState("10")
-  const [selectedYear, setSelectedYear] = useState("2024")
-  const [hasReport, setHasReport] = useState(true)
+  const currentDate = new Date()
+  const [selectedMonth, setSelectedMonth] = useState(String(currentDate.getMonth() + 1).padStart(2, '0'))
+  const [selectedYear, setSelectedYear] = useState(String(currentDate.getFullYear()))
+  const [hasReport, setHasReport] = useState(false)
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+
+  const { stats, byAirline, byCategory, topFlights, hasData, isLoading, error } = useReportData(
+    selectedMonth,
+    selectedYear
+  )
 
   const handleGenerateReport = () => {
-    // In a real app, this would fetch data from the backend
     setHasReport(true)
   }
 
-  const handleExportExcel = () => {
-    // Mock export functionality
-    console.log("Exporting to Excel...")
+  const handleDownloadPDF = async () => {
+    if (!hasData) return
+
+    setIsGeneratingPDF(true)
+    try {
+      const reportData: ReportData = {
+        month: getMonthName(selectedMonth),
+        year: selectedYear,
+        stats,
+        byAirline,
+        byCategory,
+        topFlights,
+        generatedDate: new Date().toLocaleDateString('es-CL', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      }
+
+      const filename = `reporte_${getMonthName(selectedMonth)}_${selectedYear}.pdf`
+      await downloadPDFReport(reportData, filename)
+    } catch (error) {
+      console.error('Error al generar PDF:', error)
+      alert('Error al generar el reporte PDF. Por favor, intenta nuevamente.')
+    } finally {
+      setIsGeneratingPDF(false)
+    }
   }
 
   const handlePrint = () => {
@@ -128,15 +133,54 @@ export function ReportsPage() {
               </Select>
             </div>
 
-            <Button onClick={handleGenerateReport} className="w-full sm:w-auto bg-primary text-primary-foreground">
-              Generar Reporte
+            <Button 
+              onClick={handleGenerateReport} 
+              className="w-full sm:w-auto bg-primary text-primary-foreground"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader className="h-4 w-4 mr-2 animate-spin" />
+                  Cargando...
+                </>
+              ) : (
+                'Generar Reporte'
+              )}
             </Button>
           </div>
         </CardContent>
       </Card>
 
+      {/* Error Message */}
+      {error && (
+        <Card>
+          <CardContent className="py-6">
+            <div className="flex items-center gap-3 text-destructive">
+              <Package className="h-5 w-5" />
+              <div>
+                <p className="font-semibold">Error al cargar los datos</p>
+                <p className="text-sm">{error.message}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* No Data Message */}
+      {hasReport && !hasData && !isLoading && (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Package className="h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold text-foreground">No hay datos disponibles</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              No se encontraron registros para {getMonthName(selectedMonth)} {selectedYear}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Report Content */}
-      {hasReport && (
+      {hasReport && hasData && (
         <>
           {/* Report Header */}
           <Card>
@@ -144,14 +188,26 @@ export function ReportsPage() {
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
                   <CardTitle className="text-2xl">
-                    {reportData.month} {reportData.year}
+                    {getMonthName(selectedMonth)} {selectedYear}
                   </CardTitle>
                   <CardDescription>Resumen del período</CardDescription>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handleExportExcel} className="gap-2 bg-transparent">
-                    <Download className="h-4 w-4" />
-                    <span className="hidden sm:inline">Exportar Excel</span>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleDownloadPDF} 
+                    className="gap-2 bg-transparent"
+                    disabled={isGeneratingPDF}
+                  >
+                    {isGeneratingPDF ? (
+                      <Loader className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileText className="h-4 w-4" />
+                    )}
+                    <span className="hidden sm:inline">
+                      {isGeneratingPDF ? 'Generando...' : 'Descargar PDF'}
+                    </span>
                   </Button>
                   <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2 bg-transparent">
                     <Printer className="h-4 w-4" />
@@ -164,19 +220,19 @@ export function ReportsPage() {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-1 rounded-lg border border-border bg-background p-4">
                   <p className="text-sm text-muted-foreground">Total de Maletas</p>
-                  <p className="text-2xl font-bold text-foreground">{reportData.stats.total}</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.total}</p>
                 </div>
                 <div className="space-y-1 rounded-lg border border-border bg-background p-4">
                   <p className="text-sm text-muted-foreground">Counter</p>
-                  <p className="text-2xl font-bold text-foreground">{reportData.stats.counter}</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.counter}</p>
                 </div>
                 <div className="space-y-1 rounded-lg border border-border bg-background p-4">
                   <p className="text-sm text-muted-foreground">Siberia</p>
-                  <p className="text-2xl font-bold text-foreground">{reportData.stats.siberia}</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.siberia}</p>
                 </div>
                 <div className="space-y-1 rounded-lg border border-border bg-background p-4">
                   <p className="text-sm text-muted-foreground">Con Firma</p>
-                  <p className="text-2xl font-bold text-foreground">{reportData.stats.signed}</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.signed}</p>
                 </div>
               </div>
             </CardContent>
@@ -187,7 +243,7 @@ export function ReportsPage() {
             {/* By Airline */}
             <ChartCard title="Daños por Aerolínea" description="Distribución de maletas dañadas">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={reportData.byAirline}>
+                <BarChart data={byAirline}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis dataKey="name" stroke="var(--muted-foreground)" />
                   <YAxis stroke="var(--muted-foreground)" />
@@ -205,11 +261,11 @@ export function ReportsPage() {
             </ChartCard>
 
             {/* By Type */}
-            <ChartCard title="Daños por Tipo" description="Categorización de daños">
+            <ChartCard title="Daños por Categoría" description="Categorización de daños">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={reportData.byType}
+                    data={byCategory}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
@@ -218,7 +274,7 @@ export function ReportsPage() {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {reportData.byType.map((entry, index) => (
+                    {byCategory.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -237,7 +293,7 @@ export function ReportsPage() {
             {/* Top Flights */}
             <ChartCard title="Vuelos con Más Daños" description="Top 5 vuelos afectados" className="lg:col-span-2">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={reportData.topFlights} layout="vertical">
+                <BarChart data={topFlights} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis type="number" stroke="var(--muted-foreground)" />
                   <YAxis dataKey="flight" type="category" stroke="var(--muted-foreground)" />
@@ -257,13 +313,13 @@ export function ReportsPage() {
         </>
       )}
 
-      {/* No Report Message */}
-      {!hasReport && (
+      {/* Initial State Message */}
+      {!hasReport && !error && (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Package className="h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 text-lg font-semibold text-foreground">No hay reporte disponible</h3>
-            <p className="mt-2 text-sm text-muted-foreground">Selecciona un período y genera un reporte</p>
+            <FileText className="h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold text-foreground">No hay reporte generado</h3>
+            <p className="mt-2 text-sm text-muted-foreground">Selecciona un período y presiona "Generar Reporte"</p>
           </CardContent>
         </Card>
       )}

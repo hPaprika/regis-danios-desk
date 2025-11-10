@@ -2,7 +2,9 @@
 
 import { Moon, Sun, LogOut, Mail } from "lucide-react"
 import { useTheme } from "next-themes"
+import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
+import { supabase } from "@/lib/supabase/client"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +15,12 @@ import {
 
 export function Header() {
   const { theme, setTheme } = useTheme()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    navigate("/login")
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card">
@@ -47,7 +55,7 @@ export function Header() {
                 <span className="text-sm text-foreground">usuario@example.com</span>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer gap-2">
+              <DropdownMenuItem className="cursor-pointer gap-2" onClick={handleLogout}>
                 <LogOut className="h-4 w-4" />
                 <span>Cerrar sesión</span>
               </DropdownMenuItem>

@@ -1,12 +1,15 @@
 import type React from "react"
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Mail, Lock, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
+import { supabase } from "@/lib/supabase/client"
 
 export function LoginForm() {
+  const navigate = useNavigate()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -18,21 +21,29 @@ export function LoginForm() {
     setError("")
     setIsLoading(true)
 
-    // Simulate API call
-    setTimeout(() => {
-      if (email && password) {
-        // In a real app, this would authenticate with Supabase
-        console.log("Login attempt:", { email, password })
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      
+      if (authError) {
+        setError(authError.message)
         setIsLoading(false)
-      } else {
-        setError("Por favor completa todos los campos")
-        setIsLoading(false)
+        return
       }
-    }, 1000)
+
+      if (data.session) {
+        navigate("/")
+      }
+    } catch (err) {
+      setError("Error al iniciar sesión. Por favor intenta nuevamente.")
+      setIsLoading(false)
+    }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-background to-muted p-4">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
@@ -87,7 +98,7 @@ export function LoginForm() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
+                  className="pl-10 pr-10" 
                   disabled={isLoading}
                 />
                 <button

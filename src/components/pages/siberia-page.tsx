@@ -17,6 +17,7 @@ import {
 import { EditSiberiaModal } from "@/components/modals/edit-siberia-modal"
 import { DeleteConfirmDialog } from "@/components/modals/delete-confirm-dialog"
 import { ImageViewerDialog } from "@/components/modals/image-viewer-dialog"
+import { supabase } from "@/lib/supabase/client"
 
 interface SiberiaRecord {
   id: string
@@ -25,13 +26,15 @@ interface SiberiaRecord {
   fecha_hora: string
   imagen_url: string
   firma: boolean
+  
   usuario?: string
 }
 
-const fetcher = async (url: string) => {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error("Failed to fetch")
-  return res.json()
+const fetcher = async () => {
+  const { data, error } = await supabase.from("siberia").select("*").order("fecha_hora", { ascending: false })
+
+  if (error) throw new Error(error.message)
+  return data || []
 }
 
 export function SiberiaPage() {
@@ -45,7 +48,7 @@ export function SiberiaPage() {
     isLoading,
     error,
     mutate,
-  } = useSWR("/api/siberia", fetcher, {
+  } = useSWR("siberia-page", fetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: true,
     refreshInterval: 5000,
@@ -72,9 +75,9 @@ export function SiberiaPage() {
   const confirmDelete = async () => {
     if (deletingRecord) {
       try {
-        await fetch(`/api/siberia?id=${deletingRecord.id}`, {
-          method: "DELETE",
-        })
+        const { error } = await supabase.from("siberia").delete().eq("id", deletingRecord.id)
+
+        if (error) throw error
         mutate()
         setDeletingRecord(null)
       } catch (error) {
@@ -85,11 +88,9 @@ export function SiberiaPage() {
 
   const handleSaveEdit = async (updatedRecord: SiberiaRecord) => {
     try {
-      await fetch(`/api/siberia?id=${updatedRecord.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedRecord),
-      })
+      const { error } = await supabase.from("siberia").update(updatedRecord).eq("id", updatedRecord.id)
+
+      if (error) throw error
       mutate()
       setEditingRecord(null)
     } catch (error) {

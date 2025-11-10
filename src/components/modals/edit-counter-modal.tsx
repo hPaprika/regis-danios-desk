@@ -68,8 +68,9 @@ export function EditCounterModal({ record, onClose, onSave }: EditCounterModalPr
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="LATAM">LATAM</SelectItem>
-                <SelectItem value="Sky Airline">Sky Airline</SelectItem>
-                <SelectItem value="VIVA Air">VIVA Air</SelectItem>
+                <SelectItem value="Sky">Sky</SelectItem>
+                <SelectItem value="JetSmart">JetSmart</SelectItem>
+                <SelectItem value="avianca">avianca</SelectItem>
               </SelectContent>
             </Select>
           </div>

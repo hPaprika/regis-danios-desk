@@ -1,22 +1,22 @@
 
 
 import { useState } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Menu, X, LayoutDashboard, Package, Plane, BarChart3 } from "lucide-react"
+import { Link, useLocation } from "react-router-dom"
+import { Menu, X, LayoutDashboard, BriefcaseConveyorBelt, BaggageClaim, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/counter", label: "Counter", icon: Package },
-  { href: "/siberia", label: "Siberia", icon: Plane },
+  { href: "/counter", label: "Counter", icon: BriefcaseConveyorBelt },
+  { href: "/siberia", label: "Siberia", icon: BaggageClaim },
   { href: "/reports", label: "Reportes", icon: BarChart3 },
 ]
 
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
-  const pathname = usePathname()
+  const location = useLocation()
+  const pathname = location.pathname
 
   return (
     <>
@@ -36,7 +36,7 @@ export function Sidebar() {
       >
         <div className="flex h-full flex-col">
           {/* Logo */}
-          <div className="flex h-16 items-center justify-center border-b border-border">
+          <div className="flex h-16 items-center border-b border-border px-4">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
                 RD
@@ -51,7 +51,7 @@ export function Sidebar() {
               const Icon = item.icon
               const isActive = pathname === item.href
               return (
-                <Link key={item.href} href={item.href}>
+                <Link key={item.href} to={item.href}>
                   <Button
                     variant={isActive ? "default" : "ghost"}
                     className={cn(
