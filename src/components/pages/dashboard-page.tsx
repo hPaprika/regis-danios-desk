@@ -1,31 +1,14 @@
-
-
 import React from "react"
-
 import { useMemo } from "react"
 import useSWR from "swr"
-import { Package, AlertCircle, CheckCircle2, Building2, Loader } from "lucide-react"
+import { Luggage, UserRoundCog, Signature, UserRoundSearch, Loader } from "lucide-react"
 import { StatsCard } from "@/components/stats-card"
 import { ChartCard } from "@/components/chart-card"
 import { FilterBar } from "@/components/filter-bar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts"
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import supabase from "@/lib/supabase/client"
 
 const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"]
@@ -33,12 +16,16 @@ const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"]
 const unifiedFetcher = async () => {
   const { data, error } = await supabase.from("unified_records").select("*").order("created_at", { ascending: false })
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    console.error("Error fetching unified_records:", error)
+    throw new Error(error.message)
+  }
+  console.log("Unified data fetched:", data?.length || 0, "records")
   return data || []
 }
 
 export function DashboardPage() {
-  const { data: unifiedData = [], isLoading } = useSWR("dashboard-unified", unifiedFetcher, {
+  const { data: unifiedData = [], isLoading, error } = useSWR("dashboard-unified", unifiedFetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: true,
     refreshInterval: 10000,
@@ -101,7 +88,7 @@ export function DashboardPage() {
   const temporalTrend = useMemo(() => {
     const trends: Record<string, any> = {}
     unifiedData.forEach((record: any) => {
-      const date = new Date(record.fecha_hora).toLocaleDateString("es-CL", {
+      const date = new Date(record.fecha_hora).toLocaleDateString("es-PE", {
         month: "2-digit",
         day: "2-digit",
       })
@@ -117,9 +104,8 @@ export function DashboardPage() {
 
   const shiftComparison = useMemo(() => {
     const shifts: Record<string, any> = {
-      Mañana: { shift: "Mañana", counter: 0, siberia: 0 },
-      Tarde: { shift: "Tarde", counter: 0, siberia: 0 },
-      Noche: { shift: "Noche", counter: 0, siberia: 0 },
+      Mañana: { shift: "BRC-ERC", counter: 0, siberia: 0 },
+      Tarde: { shift: "IRC-KRC", counter: 0, siberia: 0 },
     }
     unifiedData.forEach((record: any) => {
       if (record.turno && shifts[record.turno]) {
@@ -143,33 +129,41 @@ export function DashboardPage() {
         <p className="text-muted-foreground">Vista general del mes actual</p>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-lg">
+          <p className="font-semibold">Error al cargar los datos</p>
+          <p className="text-sm">{error.message}</p>
+        </div>
+      )}
+
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Total de Maletas"
           value={stats.total}
-          icon={Package}
+          icon={Luggage}
           description="Registros totales"
           trend={{ value: 12, isPositive: true }}
         />
         <StatsCard
           title="Counter"
           value={stats.counter}
-          icon={Building2}
+          icon={UserRoundSearch}
           description="Registros en Counter"
           trend={{ value: 8, isPositive: true }}
         />
         <StatsCard
           title="Siberia"
           value={stats.siberia}
-          icon={AlertCircle}
+          icon={UserRoundCog}
           description="Registros en Siberia"
           trend={{ value: 5, isPositive: true }}
         />
         <StatsCard
           title="Con Firma"
           value={`${stats.signed}/${stats.total}`}
-          icon={CheckCircle2}
+          icon={Signature}
           description="Registros firmados"
           trend={{ value: 15, isPositive: true }}
         />
@@ -214,8 +208,9 @@ export function DashboardPage() {
             <SelectContent>
               <SelectItem value="all">Todas</SelectItem>
               <SelectItem value="latam">LATAM</SelectItem>
-              <SelectItem value="sky airline">Sky Airline</SelectItem>
-              <SelectItem value="viva air">VIVA Air</SelectItem>
+              <SelectItem value="Sky">Sky</SelectItem>
+              <SelectItem value="JetSmart">JetSmart</SelectItem>
+              <SelectItem value="avianca">Avianca</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -230,9 +225,8 @@ export function DashboardPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="mañana">Mañana</SelectItem>
-              <SelectItem value="tarde">Tarde</SelectItem>
-              <SelectItem value="noche">Noche</SelectItem>
+              <SelectItem value="mañana">BRC-ERC</SelectItem>
+              <SelectItem value="tarde">IRC-KRC</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -289,13 +283,13 @@ export function DashboardPage() {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {damagesByType.map((entry, index) => (
+                  {damagesByType.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "var(--card)",
+                    // backgroundColor: "var(--card)",
                     border: "1px solid var(--border)",
                     borderRadius: "0.5rem",
                   }}
