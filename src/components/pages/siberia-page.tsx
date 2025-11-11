@@ -2,10 +2,11 @@
 
 import { useState } from "react"
 import useSWR from "swr"
-import { Search, MoreVertical, Trash2, Edit2, Loader } from "lucide-react"
+import { Search, MoreVertical, Trash2, Edit2, Loader, Calendar, ChevronLeft, ChevronRight } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import {
   DropdownMenu,
@@ -39,9 +40,12 @@ const fetcher = async () => {
 
 export function SiberiaPage() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [dateFilter, setDateFilter] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
   const [editingRecord, setEditingRecord] = useState<SiberiaRecord | null>(null)
   const [deletingRecord, setDeletingRecord] = useState<SiberiaRecord | null>(null)
   const [viewingImage, setViewingImage] = useState<SiberiaRecord | null>(null)
+  const recordsPerPage = 10
 
   const {
     data: siberiaData = [],
@@ -55,10 +59,36 @@ export function SiberiaPage() {
   })
 
   const filteredData = siberiaData.filter(
-    (item: SiberiaRecord) =>
-      item.codigo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.vuelo.toLowerCase().includes(searchQuery.toLowerCase()),
+    (item: SiberiaRecord) => {
+      const matchesSearch = 
+        item.codigo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.vuelo.toLowerCase().includes(searchQuery.toLowerCase())
+      
+      const matchesDate = dateFilter
+        ? new Date(item.fecha_hora).toISOString().split('T')[0] === dateFilter
+        : true
+      
+      return matchesSearch && matchesDate
+    }
   )
+
+  // Paginación
+  const totalPages = Math.ceil(filteredData.length / recordsPerPage)
+  const paginatedData = filteredData.slice(
+    (currentPage - 1) * recordsPerPage,
+    currentPage * recordsPerPage
+  )
+
+  // Reset a página 1 cuando cambian los filtros
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value)
+    setCurrentPage(1)
+  }
+
+  const handleDateChange = (value: string) => {
+    setDateFilter(value)
+    setCurrentPage(1)
+  }
 
   const handleEdit = (record: SiberiaRecord) => {
     setEditingRecord(record)
@@ -75,7 +105,11 @@ export function SiberiaPage() {
   const confirmDelete = async () => {
     if (deletingRecord) {
       try {
-        const { error } = await supabase.from("siberia").delete().eq("id", deletingRecord.id)
+        const { error } = await supabase
+          .rpc('delete_unified_record', {
+            p_id: deletingRecord.id,
+            p_source: 'siberia'
+          })
 
         if (error) throw error
         mutate()
@@ -88,7 +122,16 @@ export function SiberiaPage() {
 
   const handleSaveEdit = async (updatedRecord: SiberiaRecord) => {
     try {
-      const { error } = await supabase.from("siberia").update(updatedRecord).eq("id", updatedRecord.id)
+      const { error } = await supabase
+        .rpc('update_unified_record', {
+          p_id: updatedRecord.id,
+          p_source: 'siberia',
+          p_codigo: updatedRecord.codigo,
+          p_vuelo: updatedRecord.vuelo,
+          p_fecha_hora: updatedRecord.fecha_hora,
+          p_imagen_url: updatedRecord.imagen_url,
+          p_firma: updatedRecord.firma
+        })
 
       if (error) throw error
       mutate()
@@ -106,22 +149,50 @@ export function SiberiaPage() {
         <p className="text-muted-foreground">Gestión de maletas dañadas en Siberia</p>
       </div>
 
-      {/* Search Bar */}
+      {/* Search and Filter Bar */}
       <Card>
         <CardHeader>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2">
             <div>
-              <CardTitle>Búsqueda</CardTitle>
-              <CardDescription>Buscar por código o número de vuelo</CardDescription>
+              <CardTitle>Búsqueda y Filtros</CardTitle>
+              <CardDescription>Buscar por código o número de vuelo, y filtrar por fecha</CardDescription>
             </div>
-            <div className="relative flex-1 sm:flex-initial">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Buscar..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 w-full sm:w-64"
-              />
+            <div className="flex items-end flex-col sm:flex-row gap-4">
+              <div className="relative flex-1 ">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="pl-9 w-full"
+                />
+              </div>
+              <div className="flex gap-2 items-end">
+                <div className="flex-1 sm:flex-initial">
+                  <Label htmlFor="date-filter" className="text-xs mb-1 block">
+                    Filtrar por fecha
+                  </Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="date-filter"
+                      type="date"
+                      value={dateFilter}
+                      onChange={(e) => handleDateChange(e.target.value)}
+                      className="pl-9 w-full sm:w-48"
+                    />
+                  </div>
+                </div>
+                {dateFilter && (
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDateChange("")}
+                    size="sm"
+                  >
+                    Limpiar
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -165,7 +236,7 @@ export function SiberiaPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredData.map((record: SiberiaRecord) => (
+                  paginatedData.map((record: SiberiaRecord) => (
                     <tr key={record.id} className="border-b border-border transition-colors hover:bg-muted/50">
                       <td className="px-6 py-4 font-mono font-semibold text-foreground">{record.codigo}</td>
                       <td className="px-6 py-4 text-foreground">{record.vuelo}</td>
@@ -224,6 +295,38 @@ export function SiberiaPage() {
               </tbody>
             </table>
           </div>
+          
+          {/* Paginación */}
+          {filteredData.length > 0 && (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+              <p className="text-sm text-muted-foreground">
+                Mostrando {((currentPage - 1) * recordsPerPage) + 1} - {Math.min(currentPage * recordsPerPage, filteredData.length)} de {filteredData.length} registros
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </Button>
+                <div className="flex items-center px-3 text-sm">
+                  Página {currentPage} de {totalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Siguiente
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
