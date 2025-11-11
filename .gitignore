@@ -23,3 +23,5 @@ dist-ssr
 *.sln
 *.sw?
 .env
+GUIA_EDGE_FUNCTION_EMAILS.md
+db_script
