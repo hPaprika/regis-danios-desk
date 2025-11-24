@@ -25,3 +25,4 @@ dist-ssr
 .env
 GUIA_EDGE_FUNCTION_EMAILS.md
 db_script
+.vercel
