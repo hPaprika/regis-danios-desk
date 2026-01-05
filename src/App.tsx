@@ -5,7 +5,6 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { Layout } from "@/components/layout/layout"
 import { LoginForm } from "@/components/auth/login-form"
 import { DashboardPage } from "@/components/pages/dashboard-page"
-import { CounterPage } from "@/components/pages/counter-page"
 import { SiberiaPage } from "@/components/pages/siberia-page"
 import { ReportsPage } from "@/components/pages/reports-page"
 
@@ -29,7 +28,6 @@ function App() {
               }
             >
               <Route path="/" element={<DashboardPage />} />
-              <Route path="/counter" element={<CounterPage />} />
               <Route path="/siberia" element={<SiberiaPage />} />
               <Route path="/reports" element={<ReportsPage />} />
             </Route>

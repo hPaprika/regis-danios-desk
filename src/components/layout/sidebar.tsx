@@ -2,13 +2,12 @@
 
 import { useState } from "react"
 import { Link, useLocation } from "react-router-dom"
-import { Menu, X, LayoutDashboard, BriefcaseConveyorBelt, BaggageClaim, BarChart3, ChevronLeft, ChevronRight } from "lucide-react"
+import { Menu, X, LayoutDashboard, BaggageClaim, BarChart3, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/counter", label: "Counter", icon: BriefcaseConveyorBelt },
   { href: "/siberia", label: "Siberia", icon: BaggageClaim },
   { href: "/reports", label: "Reportes", icon: BarChart3 },
 ]
