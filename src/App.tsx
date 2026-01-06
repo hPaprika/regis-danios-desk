@@ -4,6 +4,7 @@ import { AuthProvider } from "@/contexts/AuthContext"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { Layout } from "@/components/layout/layout"
 import { LoginForm } from "@/components/auth/login-form"
+import { EmailConfirmation } from "@/components/auth/email-confirmation"
 import { DashboardPage } from "@/components/pages/dashboard-page"
 import { SiberiaPage } from "@/components/pages/siberia-page"
 import { ReportsPage } from "@/components/pages/reports-page"
@@ -20,6 +21,7 @@ function App() {
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginForm />} />
+            <Route path="/auth/confirm" element={<EmailConfirmation />} />
             <Route
               element={
                 <ProtectedRoute>

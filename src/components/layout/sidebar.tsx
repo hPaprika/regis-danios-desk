@@ -42,7 +42,7 @@ export function Sidebar() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
                 RD
               </div>
-              {!isCollapsed && <span className="font-semibold text-foreground">RegisDaños</span>}
+              {!isCollapsed && <span className="font-semibold text-foreground">RegisBags</span>}
             </div>
             <div className="flex items-center justify-between">
               <Button
@@ -84,7 +84,7 @@ export function Sidebar() {
 
           {/* Footer */}
           <div className="border-t border-border px-4 py-4">
-            {!isCollapsed && <p className="text-xs text-muted-foreground">&copy; 2025 RegisDaños</p>}
+            {!isCollapsed && <p className="text-xs text-muted-foreground">&copy; 2025 RegisBags</p>}
           </div>
         </div>
       </aside>

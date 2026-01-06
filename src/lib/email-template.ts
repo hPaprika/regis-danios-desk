@@ -217,10 +217,10 @@ export function generateEmailTemplate(data: EmailTemplateData): string {
           </div>
         </div>
 
-        ${stats.signatureRate >= 80 
-          ? '<div class="highlight-box"><p>✅ <strong>Objetivo cumplido:</strong> La tasa de firmas supera el 80%</p></div>'
-          : '<div class="highlight-box" style="background-color: #fef3c7; border-left-color: #f59e0b;"><p>⚠️ <strong>Atención:</strong> La tasa de firmas está por debajo del objetivo (80%)</p></div>'
-        }
+        ${stats.signatureRate >= 80
+      ? '<div class="highlight-box"><p>✅ <strong>Objetivo cumplido:</strong> La tasa de firmas supera el 80%</p></div>'
+      : '<div class="highlight-box" style="background-color: #fef3c7; border-left-color: #f59e0b;"><p>⚠️ <strong>Atención:</strong> La tasa de firmas está por debajo del objetivo (80%)</p></div>'
+    }
       </div>
 
       <!-- Top Airline & Category -->
@@ -310,7 +310,7 @@ export function generateEmailTemplate(data: EmailTemplateData): string {
 
     <!-- Footer -->
     <div class="footer">
-      <p><strong>RegisDaños</strong> - Sistema de Registro de Maletas Dañadas</p>
+      <p><strong>RegisBags</strong> - Sistema de Registro de Maletas Dañadas</p>
       <p>Generado el ${generatedDate}</p>
       <p style="margin-top: 15px; font-size: 11px;">
         Este es un correo automático. Por favor no responder a este mensaje.
@@ -355,7 +355,7 @@ ${topFlights.map((f: { flight: string; damages: number }, i: number) => `${i + 1
 ` : ''}
 
 ---
-RegisDaños - Sistema de Registro de Maletas Dañadas
+RegisBags - Sistema de Registro de Maletas Dañadas
 Generado el ${generatedDate}
   `.trim()
 }

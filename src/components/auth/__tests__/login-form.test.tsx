@@ -27,7 +27,7 @@ describe('LoginForm Component', () => {
   it('debe renderizar el formulario de login correctamente', () => {
     render(<LoginForm />)
 
-    expect(screen.getByText('RegisDaños')).toBeInTheDocument()
+    expect(screen.getByText('RegisBags')).toBeInTheDocument()
     expect(screen.getByText('Admin Panel')).toBeInTheDocument()
     expect(screen.getByLabelText(/correo electrónico/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/contraseña/i)).toBeInTheDocument()
