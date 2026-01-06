@@ -1,85 +1,46 @@
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo } from "react"
 import useSWR from "swr"
 import {
-  Luggage, Signature, Clock, Camera,
-  FileX, Info, Check, X, AlertCircle
+  Luggage, Signature, Clock,
+  FileX, AlertCircle
 } from "lucide-react"
 import { StatsCard } from "@/components/stats-card"
 import { ChartCard } from "@/components/chart-card"
 import { FilterBar } from "@/components/filter-bar"
+import { ChartPieDonut } from "@/components/charts/chart-pie-donut"
+import { ChartBarMultiple } from "@/components/charts/chart-bar-multiple"
+import { ChartBarHorizontal } from "@/components/charts/chart-bar-horizontal"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { LineChart, Line } from "recharts"
+import { Card, CardContent }
+  from "@/components/ui/card"
+import { Alert, AlertDescription }
+  from "@/components/ui/alert"
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from "@/components/ui/select"
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
-} from "@/components/ui/table"
-import {
-  DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu"
-import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from "recharts"
 import supabase from "@/lib/supabase/client"
 
 // types & interfaces
-interface UnifiedRecord {
+interface SiberiaRecord {
   id: string
-  source: 'siberia',
   codigo: string
-  aerolinea: string | null
   vuelo: string | null
-  categorias: string[] | null
   observacion: string | null
   fecha_hora: string
-  usuario: string | null
-  turno: 'BRC-ERC' | 'IRC-KRC' | null
+  turno: string | null
   firma: boolean
   imagen_url: string | null
   created_at: string
   updated_at: string
 }
 
-interface TableFilters {
-  search: string
-  airlines: string[]
-  categories: string[]
-  shifts: string[]
-  sources: string[]
-  hasSignature: 'all' | 'yes' | 'no'
-}
-
-interface ChartFilter {
-  type: 'airline' | 'category' | null
-  value: string | null
-}
-
 interface DashboardFilters {
   dateFrom: string
   dateTo: string
 }
-
-// constants
-const AIRLINE_COLORS: Record<string, string> = {
-  'LATAM': '#22088c',
-  'SKY': '#6c2679',
-  'JET SMART': '#003d6a',
-  'AVIANCA': '#dc3024',
-}
-
-const CATEGORY_LABELS: Record<string, string> = {
-  'A': 'Asa rota',
-  'B': 'Maleta rota',
-  'C': 'Rueda rota'
-}
-
-const CATEGORY_COLORS = ['#ef4444', '#3b82f6', '#10b981']
 
 // helper functions
 const getTodayRange = () => {
@@ -90,66 +51,6 @@ const getTodayRange = () => {
     start: startOfDay.toISOString(),
     end: endOfDay.toISOString()
   }
-}
-
-const getCategoryColor = (category: string) => {
-  const colors: Record<string, string> = {
-    'A': 'bg-red-100 text-red-800 border-red-300',
-    'B': 'bg-blue-100 text-blue-800 border-blue-300',
-    'C': 'bg-green-100 text-green-800 border-green-300'
-  }
-  return colors[category] || 'bg-gray-100 text-gray-800'
-}
-
-const formatDateTime = (dateString: string) => {
-  return new Date(dateString).toLocaleString('es-PE', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-// multi-select component
-interface MultiSelectProps {
-  options: string[]
-  value: string[]
-  onChange: (value: string[]) => void
-  placeholder?: string
-}
-
-function MultiSelect({ options, value, onChange, placeholder = "Seleccionar..." }: MultiSelectProps) {
-  const handleToggle = (option: string) => {
-    const newValue = value.includes(option)
-      ? value.filter(v => v !== option)
-      : [...value, option]
-    onChange(newValue)
-  }
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="w-full justify-between">
-          {value.length > 0
-            ? `${value.length} seleccionado${value.length > 1 ? 's' : ''}`
-            : placeholder
-          }
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56">
-        {options.map((option) => (
-          <DropdownMenuCheckboxItem
-            key={option}
-            checked={value.includes(option)}
-            onCheckedChange={() => handleToggle(option)}
-          >
-            {option}
-          </DropdownMenuCheckboxItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
 }
 
 const getLast7DaysRange = () => {
@@ -189,15 +90,15 @@ const createUnifiedFetcher = (mode: 'today' | 'month' | 'last7days', monthValue?
 
   try {
     const { data, error } = await supabase
-      .from("unified_records")
+      .from("siberia")
       .select("*")
       .gte('fecha_hora', dateRange.start)
       .lte('fecha_hora', dateRange.end)
       .order("fecha_hora", { ascending: false })
 
     if (error) {
-      console.error("Error fetching unified_records:", error)
-      throw new Error(error.message)
+      console.error("Error fetching siberia table:", error)
+      throw new Error('Sin conexión a internet. Por favor, verifica tu conexión.')
     }
 
     console.log("Unified data fetched:", data?.length || 0, `records for ${mode}`)
@@ -223,7 +124,7 @@ export function DashboardPage() {
     new Date().toISOString().slice(0, 7)
   )
 
-  const { data: unifiedData = [], isLoading, error } = useSWR<UnifiedRecord[]>(
+  const { data: unifiedData = [], isLoading, error } = useSWR<SiberiaRecord[]>(
     `dashboard-unified-${viewMode}-${viewMode === 'month' ? selectedMonth : viewMode}`,
     createUnifiedFetcher(viewMode, selectedMonth),
     {
@@ -232,23 +133,6 @@ export function DashboardPage() {
       refreshInterval: 30000,
     }
   )
-
-  const [tableFilters, setTableFilters] = useState<TableFilters>({
-    search: '',
-    airlines: [],
-    categories: [],
-    shifts: [],
-    sources: [],
-    hasSignature: 'all'
-  })
-
-  const [activeChartFilter, setActiveChartFilter] = useState<ChartFilter>({
-    type: null,
-    value: null
-  })
-
-  const [currentPage, setCurrentPage] = useState(1)
-  const recordsPerPage = 20
 
   // Apply date range filters
   const filteredByDate = useMemo(() => {
@@ -273,7 +157,6 @@ export function DashboardPage() {
   // KPIs Calculations
   const stats = useMemo(() => {
     const totalRecords = filteredByDate.length
-    const siberiaRecords = filteredByDate.filter(r => r.source === 'siberia')
 
     // Signature Rate
     const signedCount = filteredByDate.filter(r => r.firma).length
@@ -291,50 +174,14 @@ export function DashboardPage() {
     const otherShift = dominantShift === 'BRC-ERC' ? 'IRC-KRC' : 'BRC-ERC'
     const otherShiftCount = shiftCounts[otherShift]
 
-    // Siberia count
-    const siberiaCount = siberiaRecords.length
-
     return {
       total: totalRecords,
       signatureRate,
       signedCount,
       dominantShift,
       dominantShiftCount,
-      otherShiftCount,
-      siberiaCount
+      otherShiftCount
     }
-  }, [filteredByDate])
-
-  // Chart Data: Damages by Airline
-  const damagesByAirline = useMemo(() => {
-    const airlines: Record<string, number> = {}
-    filteredByDate
-      .filter(r => r.aerolinea)
-      .forEach(record => {
-        if (record.aerolinea) {
-          airlines[record.aerolinea] = (airlines[record.aerolinea] || 0) + 1
-        }
-      })
-    return Object.entries(airlines)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-  }, [filteredByDate])
-
-  // Chart Data: Damages by Category 
-  const damagesByCategory = useMemo(() => {
-    const categories: Record<string, number> = {}
-    filteredByDate
-      .filter(r => r.categorias)
-      .forEach(record => {
-        record.categorias?.forEach(cat => {
-          categories[cat] = (categories[cat] || 0) + 1
-        })
-      })
-    return Object.entries(categories).map(([code, value]) => ({
-      name: `${code} - ${CATEGORY_LABELS[code]}`,
-      code,
-      value
-    }))
   }, [filteredByDate])
 
   // Chart Data: Temporal Trend (Last 7 Days)
@@ -360,95 +207,99 @@ export function DashboardPage() {
     return last7Days
   }, [unifiedData])
 
-  // Chart Data: Damages by Shift and Airline
-  const damagesByShiftAndAirline = useMemo(() => {
-    type AirlineKey = 'LATAM' | 'SKY' | 'JET SMART' | 'AVIANCA'
-    type Row = { shift: string } & Record<AirlineKey, number>
-
-    const data: Row[] = [
-      { shift: 'BRC-ERC (Mañana)', LATAM: 0, SKY: 0, 'JET SMART': 0, AVIANCA: 0 },
-      { shift: 'IRC-KRC (Tarde)', LATAM: 0, SKY: 0, 'JET SMART': 0, AVIANCA: 0 }
+  // Chart Data: Signature Comparison (Pie Donut)
+  const signatureData = useMemo(() => {
+    const firmados = filteredByDate.filter(r => r.firma).length
+    const sinFirma = filteredByDate.length - firmados
+    return [
+      { category: "Con Firma", count: firmados, fill: "var(--chart-1)" },
+      { category: "Sin Firma", count: sinFirma, fill: "var(--chart-2)" }
     ]
+  }, [filteredByDate])
 
-    filteredByDate
-      .filter(r => r.turno && r.aerolinea)
-      .forEach(record => {
-        const shiftIndex = record.turno === 'BRC-ERC' ? 0 : 1
-        const key = record.aerolinea as AirlineKey
-        if (data[shiftIndex][key] !== undefined) {
-          data[shiftIndex][key] = data[shiftIndex][key] + 1
+  // Chart Data: Shift Comparison (Bar Multiple)
+  const shiftComparisonData = useMemo(() => {
+    if (viewMode === 'today') {
+      // Para hoy, mostrar un solo punto con ambos turnos
+      const brcCount = filteredByDate.filter(r => r.turno === 'BRC-ERC').length
+      const ircCount = filteredByDate.filter(r => r.turno === 'IRC-KRC').length
+      return [{
+        periodo: 'Hoy',
+        'BRC-ERC': brcCount,
+        'IRC-KRC': ircCount
+      }]
+    } else if (viewMode === 'last7days') {
+      // Para últimos 7 días, agrupar por día
+      const last7Days = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date()
+        date.setDate(date.getDate() - (6 - i))
+        return {
+          date: date.toISOString().split('T')[0],
+          periodo: date.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }),
+          'BRC-ERC': 0,
+          'IRC-KRC': 0
         }
       })
 
-    return data
-  }, [filteredByDate])
-
-  // Handlers for chart interactions
-  const handleAirlineClick = useCallback((airlineName: string) => {
-    setActiveChartFilter({ type: 'airline', value: airlineName })
-    setTableFilters(prev => ({
-      ...prev,
-      airlines: [airlineName]
-    }))
-    setTimeout(() => {
-      document.getElementById('records-table')?.scrollIntoView({
-        behavior: 'smooth'
+      filteredByDate.forEach(record => {
+        const recordDate = new Date(record.fecha_hora).toISOString().split('T')[0]
+        const dayData = last7Days.find(d => d.date === recordDate)
+        if (dayData && record.turno) {
+          if (record.turno === 'BRC-ERC') {
+            dayData['BRC-ERC']++
+          } else if (record.turno === 'IRC-KRC') {
+            dayData['IRC-KRC']++
+          }
+        }
       })
-    }, 100)
-  }, [])
 
-  const handleCategoryClick = useCallback((category: string) => {
-    setActiveChartFilter({ type: 'category', value: category })
-    setTableFilters(prev => ({
-      ...prev,
-      categories: [category]
-    }))
-    setTimeout(() => {
-      document.getElementById('records-table')?.scrollIntoView({
-        behavior: 'smooth'
+      return last7Days.map(({ periodo, 'BRC-ERC': brc, 'IRC-KRC': irc }) => ({
+        periodo,
+        'BRC-ERC': brc,
+        'IRC-KRC': irc
+      }))
+    } else {
+      // Para mes, agrupar por semana
+      const weeks: Record<string, { 'BRC-ERC': number, 'IRC-KRC': number }> = {}
+
+      filteredByDate.forEach(record => {
+        const date = new Date(record.fecha_hora)
+        const weekNum = Math.ceil(date.getDate() / 7)
+        const weekKey = `Semana ${weekNum}`
+
+        if (!weeks[weekKey]) {
+          weeks[weekKey] = { 'BRC-ERC': 0, 'IRC-KRC': 0 }
+        }
+
+        if (record.turno === 'BRC-ERC') {
+          weeks[weekKey]['BRC-ERC']++
+        } else if (record.turno === 'IRC-KRC') {
+          weeks[weekKey]['IRC-KRC']++
+        }
       })
-    }, 100)
-  }, [])
 
-  // Table filtering logic
-  const filteredRecords = useMemo(() => {
-    return filteredByDate.filter(record => {
-      if (tableFilters.search && !record.codigo.includes(tableFilters.search)) {
-        return false
+      return Object.entries(weeks).map(([periodo, counts]) => ({
+        periodo,
+        ...counts
+      }))
+    }
+  }, [filteredByDate, viewMode])
+
+  // Chart Data: Top Flights (Bar Horizontal)
+  const topFlightsData = useMemo(() => {
+    const flightCounts: Record<string, number> = {}
+
+    filteredByDate.forEach(r => {
+      if (r.vuelo) {
+        flightCounts[r.vuelo] = (flightCounts[r.vuelo] || 0) + 1
       }
-
-      if (tableFilters.airlines.length > 0 && record.aerolinea) {
-        if (!tableFilters.airlines.includes(record.aerolinea)) return false
-      }
-
-      if (tableFilters.categories.length > 0 && record.categorias) {
-        const hasCategory = tableFilters.categories.some(cat =>
-          record.categorias?.includes(cat)
-        )
-        if (!hasCategory) return false
-      }
-
-      if (tableFilters.shifts.length > 0 && record.turno) {
-        if (!tableFilters.shifts.includes(record.turno)) return false
-      }
-
-      if (tableFilters.sources.length > 0) {
-        if (!tableFilters.sources.includes(record.source)) return false
-      }
-
-      if (tableFilters.hasSignature === 'yes' && !record.firma) return false
-      if (tableFilters.hasSignature === 'no' && record.firma) return false
-
-      return true
     })
-  }, [filteredByDate, tableFilters])
 
-  // Pagination
-  const totalPages = Math.ceil(filteredRecords.length / recordsPerPage)
-  const paginatedRecords = filteredRecords.slice(
-    (currentPage - 1) * recordsPerPage,
-    currentPage * recordsPerPage
-  )
+    return Object.entries(flightCounts)
+      .map(([vuelo, incidencias]) => ({ vuelo, incidencias }))
+      .sort((a, b) => b.incidencias - a.incidencias)
+      .slice(0, 4) // Top 4 vuelos
+  }, [filteredByDate])
 
   const handleReset = () => {
     setFilters({
@@ -457,565 +308,248 @@ export function DashboardPage() {
     })
   }
 
+  // Y-axis ticks: show integer counts (0..max) to avoid fractional ticks
+  const yTicks = useMemo(() => {
+    const max = Math.max(1, ...temporalTrend.map(d => d.siberia || 0))
+    return Array.from({ length: max + 1 }, (_, i) => i)
+  }, [temporalTrend])
+
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">
-            {viewMode === 'today'
-              ? new Date().toLocaleDateString('es-PE', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })
-              : viewMode === 'last7days'
-                ? 'Últimos 7 días'
-                : new Date(selectedMonth + '-01').toLocaleDateString('es-PE', {
+    <>
+      <div className="space-y-6 p-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground">
+              {viewMode === 'today'
+                ? new Date().toLocaleDateString('es-PE', {
+                  weekday: 'long',
                   year: 'numeric',
-                  month: 'long'
+                  month: 'long',
+                  day: 'numeric'
                 })
-            }
-          </p>
-        </div>
-
-        {/* View Mode Selector */}
-        <div className="flex items-center gap-2">
-          <Button
-            variant={viewMode === 'today' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('today')}
-          >
-            Hoy
-          </Button>
-          <Button
-            variant={viewMode === 'last7days' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('last7days')}
-          >
-            Últimos 7 días
-          </Button>
-          <Button
-            variant={viewMode === 'month' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('month')}
-          >
-            Mes
-          </Button>
-
-          {viewMode === 'month' && (
-            <Input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-44"
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {error.message || 'Error al cargar los datos'}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Loading State */}
-      {isLoading && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          {[1, 2, 3, 4, 5, 6].map(i => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-4 bg-muted rounded w-1/2 mb-2" />
-                <div className="h-8 bg-muted rounded w-3/4" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* KPIs - 4 Cards */}
-      {!isLoading && filteredByDate.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Card 1: Total Daños */}
-          <StatsCard
-            title={
-              viewMode === 'today'
-                ? 'Total Daños Hoy'
-                : viewMode === 'last7days'
-                  ? 'Total Últimos 7 Días'
-                  : 'Total Daños del Mes'
-            }
-            value={stats.total}
-            icon={Luggage}
-            description={
-              viewMode === 'today'
-                ? new Date().toLocaleDateString('es-PE', { day: '2-digit', month: 'long' })
                 : viewMode === 'last7days'
                   ? 'Últimos 7 días'
-                  : new Date(selectedMonth + '-01').toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })
-            }
-          />
+                  : new Date(selectedMonth + '-01').toLocaleDateString('es-PE', {
+                    year: 'numeric',
+                    month: 'long'
+                  })
+              }
+            </p>
+          </div>
 
-          {/* Card 2: Tasa de Firmas */}
-          <StatsCard
-            title="Tasa de Firmas"
-            value={`${stats.signatureRate}%`}
-            subtitle={`${stats.signedCount}/${stats.total}`}
-            icon={Signature}
-            // description={stats.signatureRate >= 80 ? "✓ Objetivo cumplido" : "⚠ Por debajo del objetivo"}
-            trend={{ value: stats.signatureRate, isPositive: stats.signatureRate >= 80 }}
-          />
+          {/* View Mode Selector */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant={viewMode === 'today' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('today')}
+            >
+              Hoy
+            </Button>
+            <Button
+              variant={viewMode === 'last7days' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('last7days')}
+            >
+              Últimos 7 días
+            </Button>
+            <Button
+              variant={viewMode === 'month' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('month')}
+            >
+              Mes
+            </Button>
 
-          {/* Card 3: Turnos */}
-          <StatsCard
-            title="Comparativa Turnos"
-            value={stats.dominantShift}
-            subtitle={`${stats.dominantShiftCount} vs ${stats.otherShiftCount}`}
-            icon={Clock}
-            description="Turno con más registros"
-          />
-
-          {/* Card 4: Casos Siberia */}
-          <StatsCard
-            title="Casos Severos"
-            value={stats.siberiaCount}
-            subtitle="Con fotografía"
-            icon={Camera}
-            description="Registros Siberia"
-          />
-        </div>
-      )}
-
-
-      {/* Date Range Filters */}
-      {
-        !isLoading && filteredByDate.length > 0 && (
-          <FilterBar onReset={handleReset} showReset={true}>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="date-from" className="text-xs">
-                Desde
-              </Label>
+            {viewMode === 'month' && (
               <Input
-                id="date-from"
-                type="date"
-                value={filters.dateFrom}
-                onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-                className="w-full sm:w-40"
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-44"
               />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="date-to" className="text-xs">
-                Hasta
-              </Label>
-              <Input
-                id="date-to"
-                type="date"
-                value={filters.dateTo}
-                onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-                className="w-full sm:w-40"
-              />
-            </div>
-          </FilterBar>
-        )
-      }
-
-      {/* Charts Grid */}
-      {
-        !isLoading && filteredByDate.length > 0 && (
-          <>
-            <div className="grid gap-6 lg:grid-cols-2">
-              {/* Chart 1: Damages by Airline */}
-              <ChartCard title="Daños por Aerolínea" description="Distribución de maletas dañadas (clic para filtrar)">
-                {damagesByAirline.length === 0 ? (
-                  <div className="flex items-center justify-center h-80 text-muted-foreground">
-                    Sin datos disponibles
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={damagesByAirline}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis dataKey="name" stroke="var(--muted-foreground)" />
-                      <YAxis stroke="var(--muted-foreground)" />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "var(--card)",
-                          border: "1px solid var(--border)",
-                          borderRadius: "0.5rem",
-                        }}
-                        labelStyle={{ color: "var(--foreground)" }}
-                      />
-                      <Bar
-                        dataKey="value"
-                        radius={[8, 8, 0, 0]}
-                        onClick={(data: any) => handleAirlineClick(data.name)}
-                        cursor="pointer"
-                      >
-                        {damagesByAirline.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={AIRLINE_COLORS[entry.name] || '#64748b'}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </ChartCard>
-
-              {/* Chart 2: Damages by Category */}
-              <ChartCard title="Daños por Categoría" description="Categorización de daños (clic para filtrar)">
-                {damagesByCategory.length === 0 ? (
-                  <div className="flex items-center justify-center h-80 text-muted-foreground">
-                    Sin datos disponibles
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={damagesByCategory}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, value, percent }: any) =>
-                          `${name}: ${value} (${(percent * 100).toFixed(0)}%)`
-                        }
-                        outerRadius={80}
-                        dataKey="value"
-                        onClick={(data: any) => handleCategoryClick(data.code)}
-                        cursor="pointer"
-                      >
-                        {damagesByCategory.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "var(--card)",
-                          border: "1px solid var(--border)",
-                          borderRadius: "0.5rem",
-                        }}
-                        labelStyle={{ color: "var(--foreground)" }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
-              </ChartCard>
-            </div>
-
-            {/* Chart 3: Temporal Trend - Full Width */}
-            <ChartCard title="Tendencia Últimos 7 Días" description="Evolución de daños en la última semana">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={temporalTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="label" stroke="var(--muted-foreground)" />
-                  <YAxis stroke="var(--muted-foreground)" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--card)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "0.5rem",
-                    }}
-                    labelStyle={{ color: "var(--foreground)" }}
-                  />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="counter"
-                    stroke="#2563eb"
-                    strokeWidth={2}
-                    dot={{ fill: "#2563eb" }}
-                    name="Counter"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="siberia"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    dot={{ fill: "#10b981" }}
-                    name="Siberia"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            {/* Chart 4: Damages by Shift and Airline - Full Width */}
-            <ChartCard title="Daños por Turno y Aerolínea" description="Distribución por turno y aerolínea">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={damagesByShiftAndAirline}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="shift" stroke="var(--muted-foreground)" />
-                  <YAxis stroke="var(--muted-foreground)" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--card)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "0.5rem",
-                    }}
-                    labelStyle={{ color: "var(--foreground)" }}
-                  />
-                  <Legend />
-                  <Bar dataKey="LATAM" stackId="a" fill={AIRLINE_COLORS.LATAM} />
-                  <Bar dataKey="SKY" stackId="a" fill={AIRLINE_COLORS.SKY} />
-                  <Bar dataKey="JET SMART" stackId="a" fill={AIRLINE_COLORS['JET SMART']} />
-                  <Bar dataKey="AVIANCA" stackId="a" fill={AIRLINE_COLORS.AVIANCA} />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            {/* Active Chart Filter Alert */}
-            {activeChartFilter.type && (
-              <Alert className="mb-4">
-                <Info className="h-4 w-4" />
-                <AlertDescription>
-                  Filtrando por {activeChartFilter.type === 'airline' ? 'aerolínea' : 'categoría'}:
-                  <strong> {activeChartFilter.value}</strong>
-                  <Button
-                    size="sm"
-                    variant="link"
-                    onClick={() => {
-                      setActiveChartFilter({ type: null, value: null })
-                      setTableFilters(prev => ({
-                        ...prev,
-                        airlines: [],
-                        categories: []
-                      }))
-                    }}
-                  >
-                    Limpiar filtro
-                  </Button>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Records Table */}
-            <Card id="records-table">
-              <CardHeader>
-                <CardTitle>Registros Detallados</CardTitle>
-                <CardDescription>
-                  {filteredRecords.length} registros encontrados
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {/* Table Filters */}
-                <div className="flex flex-wrap gap-4 p-4 bg-muted/30 rounded-lg mb-4">
-                  <div className="flex-1 min-w-[200px]">
-                    <Label>Buscar por código</Label>
-                    <Input
-                      placeholder="Ej: 123456"
-                      value={tableFilters.search}
-                      onChange={(e) => setTableFilters({ ...tableFilters, search: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="min-w-[150px]">
-                    <Label>Aerolíneas</Label>
-                    <MultiSelect
-                      options={['LATAM', 'SKY', 'JET SMART', 'AVIANCA']}
-                      value={tableFilters.airlines}
-                      onChange={(val) => setTableFilters({ ...tableFilters, airlines: val })}
-                    />
-                  </div>
-
-                  <div className="min-w-[120px]">
-                    <Label>Categorías</Label>
-                    <MultiSelect
-                      options={['A', 'B', 'C']}
-                      value={tableFilters.categories}
-                      onChange={(val) => setTableFilters({ ...tableFilters, categories: val })}
-                    />
-                  </div>
-
-                  <div className="min-w-[120px]">
-                    <Label>Turnos</Label>
-                    <MultiSelect
-                      options={['BRC-ERC', 'IRC-KRC']}
-                      value={tableFilters.shifts}
-                      onChange={(val) => setTableFilters({ ...tableFilters, shifts: val })}
-                    />
-                  </div>
-
-                  <div className="min-w-[120px]">
-                    <Label>Origen</Label>
-                    <Select
-                      value={tableFilters.sources[0] || 'all'}
-                      onValueChange={(val) => setTableFilters({
-                        ...tableFilters,
-                        sources: val === 'all' ? [] : [val]
-                      })}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="counter">Counter</SelectItem>
-                        <SelectItem value="siberia">Siberia</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-end">
-                    <Button
-                      variant="outline"
-                      onClick={() => setTableFilters({
-                        search: '', airlines: [], categories: [],
-                        shifts: [], sources: [], hasSignature: 'all'
-                      })}
-                    >
-                      Limpiar filtros
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Table */}
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Código</TableHead>
-                      <TableHead>Origen</TableHead>
-                      <TableHead>Aerolínea</TableHead>
-                      <TableHead>Vuelo</TableHead>
-                      <TableHead>Categorías</TableHead>
-                      <TableHead>Usuario</TableHead>
-                      <TableHead>Turno</TableHead>
-                      <TableHead>Firma</TableHead>
-                      <TableHead>Fecha/Hora</TableHead>
-                      <TableHead>Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedRecords.map((record) => (
-                      <TableRow key={record.id}>
-                        <TableCell className="font-mono text-sm">{record.codigo}</TableCell>
-
-                        <TableCell>
-                          <Badge variant={record.source === 'siberia' ? 'default' : 'secondary'}>
-                            {record.source === 'siberia' ? 'Siberia' : 'Siberia'}
-                          </Badge>
-                        </TableCell>
-
-                        <TableCell>
-                          {record.aerolinea ? (
-                            <span
-                              className="font-semibold px-2 py-1 rounded text-xs"
-                              style={{
-                                backgroundColor: `${AIRLINE_COLORS[record.aerolinea]}20`,
-                                color: AIRLINE_COLORS[record.aerolinea]
-                              }}
-                            >
-                              {record.aerolinea}
-                            </span>
-                          ) : '-'}
-                        </TableCell>
-
-                        <TableCell>{record.vuelo || '-'}</TableCell>
-
-                        <TableCell>
-                          {record.categorias?.length ? (
-                            <div className="flex gap-1">
-                              {record.categorias.map((cat: string) => (
-                                <Badge
-                                  key={cat}
-                                  variant="outline"
-                                  className={getCategoryColor(cat)}
-                                >
-                                  {cat}
-                                </Badge>
-                              ))}
-                            </div>
-                          ) : '-'}
-                        </TableCell>
-
-                        <TableCell>{record.usuario || 'Sin asignar'}</TableCell>
-
-                        <TableCell>
-                          {record.turno ? (
-                            <Badge variant="outline">{record.turno}</Badge>
-                          ) : '-'}
-                        </TableCell>
-
-                        <TableCell>
-                          {record.firma ? (
-                            <Check className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <X className="h-4 w-4 text-gray-400" />
-                          )}
-                        </TableCell>
-
-                        <TableCell className="text-sm">
-                          {formatDateTime(record.fecha_hora)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-
-                {/* Pagination */}
-                <div className="flex items-center justify-between mt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Mostrando {paginatedRecords.length} de {filteredRecords.length} registros
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      Anterior
-                    </Button>
-                    <span className="flex items-center px-3 text-sm">
-                      Página {currentPage} de {totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Siguiente
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )
-      }
-
-      {/* Empty State */}
-      {!isLoading && filteredByDate.length === 0 && (
-        <Card className="p-12 text-center">
-          <div className="flex flex-col items-center gap-4">
-            <FileX className="h-16 w-16 text-muted-foreground" />
-            <div>
-              <h3 className="text-lg font-semibold">No hay registros</h3>
-              <p className="text-sm text-muted-foreground">
-                {viewMode === 'today'
-                  ? 'No se encontraron daños registrados para el día de hoy.'
-                  : viewMode === 'last7days'
-                    ? 'No se encontraron daños registrados en los últimos 7 días.'
-                    : `No se encontraron daños registrados para ${new Date(selectedMonth + '-01').toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })}.`
-                }
-              </p>
-            </div>
-            {viewMode === 'today' && (
-              <Button
-                variant="outline"
-                onClick={() => setViewMode('month')}
-              >
-                Ver mes completo
-              </Button>
             )}
           </div>
-        </Card>
-      )}
-    </div>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error.message || 'Error al cargar los datos'}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-6">
+                  <div className="h-4 bg-muted rounded w-1/2 mb-2" />
+                  <div className="h-8 bg-muted rounded w-3/4" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+        {/* Date Range Filters */}
+        {
+          !isLoading && filteredByDate.length > 0 && (
+            <FilterBar onReset={handleReset} showReset={true}>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="date-from" className="text-xs">
+                  Desde
+                </Label>
+                <Input
+                  id="date-from"
+                  type="date"
+                  value={filters.dateFrom}
+                  onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+                  className="w-full sm:w-40"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="date-to" className="text-xs">
+                  Hasta
+                </Label>
+                <Input
+                  id="date-to"
+                  type="date"
+                  value={filters.dateTo}
+                  onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+                  className="w-full sm:w-40"
+                />
+              </div>
+            </FilterBar>
+          )
+        }
+
+
+        {/* Grid layout (3x3) mapping: 1..3 = KPI cards, 4 = Charts Grid, 5-7 placeholders */}
+        {!isLoading && filteredByDate.length > 0 && (
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <StatsCard
+                title={
+                  viewMode === 'today'
+                    ? 'Total Daños Hoy'
+                    : viewMode === 'last7days'
+                      ? 'Total Últimos 7 Días'
+                      : 'Total Daños del Mes'
+                }
+                subtitle={"\u00A0"}
+                value={stats.total}
+                icon={Luggage}
+                description={
+                  viewMode === 'today'
+                    ? new Date().toLocaleDateString('es-PE', { day: '2-digit', month: 'long' })
+                    : viewMode === 'last7days'
+                      ? 'Últimos 7 días'
+                      : new Date(selectedMonth + '-01').toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })
+                }
+              />
+            </div>
+
+            <div>
+              <StatsCard
+                title="Tasa de Firmas"
+                value={`${stats.signatureRate}%`}
+                subtitle={`${stats.signedCount}/${stats.total}`}
+                icon={Signature}
+                trend={{ value: stats.signatureRate, isPositive: stats.signatureRate >= 80 }}
+                description={stats.signatureRate >= 80 ? 'Buena tasa de firmas' : 'Se recomienda mejorar la tasa de firmas'}
+              />
+            </div>
+
+            <div>
+              <StatsCard
+                title="Comparativa Turnos"
+                value={stats.dominantShift}
+                subtitle={`${stats.dominantShiftCount} vs ${stats.otherShiftCount}`}
+                icon={Clock}
+                description="Turno con más registros"
+              />
+            </div>
+
+            <div className="col-span-2">
+              <ChartCard title="Tendencia Últimos 7 Días" description="Evolución de daños en la última semana">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={temporalTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis dataKey="label" stroke="var(--muted-foreground)" />
+                    <YAxis stroke="var(--muted-foreground)" ticks={yTicks} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "var(--card)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "0.5rem",
+                      }}
+                      labelStyle={{ color: "var(--foreground)" }}
+                    />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="siberia"
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      dot={{ fill: "#10b981" }}
+                      name="Total"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </div>
+
+            <div className="col-start-3">
+              <ChartPieDonut data={signatureData} total={filteredByDate.length} />
+            </div>
+
+            <div>
+              <ChartBarHorizontal data={topFlightsData} />
+            </div>
+
+            <div className="col-span-2">
+              <ChartBarMultiple data={shiftComparisonData} viewMode={viewMode} />
+            </div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {
+          !isLoading && filteredByDate.length === 0 && (
+            <Card className="p-12 text-center">
+              <div className="flex flex-col items-center gap-4">
+                <FileX className="h-16 w-16 text-muted-foreground" />
+                <div>
+                  <h3 className="text-lg font-semibold">No hay registros</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {viewMode === 'today'
+                      ? 'No se encontraron daños registrados para el día de hoy.'
+                      : viewMode === 'last7days'
+                        ? 'No se encontraron daños registrados en los últimos 7 días.'
+                        : `No se encontraron daños registrados para ${new Date(selectedMonth + '-01').toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })}.`
+                    }
+                  </p>
+                </div>
+                {viewMode === 'today' && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setViewMode('month')}
+                  >
+                    Ver mes completo
+                  </Button>
+                )}
+              </div>
+            </Card>
+          )
+        }
+      </div >
+    </>
   )
 }
