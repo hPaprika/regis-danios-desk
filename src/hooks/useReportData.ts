@@ -2,19 +2,15 @@ import { useMemo } from 'react';
 import useSWR from 'swr';
 import supabase from '@/lib/supabase/client';
 
-interface UnifiedRecord {
+interface SiberiaRecord {
   id: string;
-  source: 'siberia';
   codigo: string;
-  aerolinea?: string;
-  vuelo?: string;
-  categorias?: string[];
-  observacion?: string;
+  vuelo: string;
   fecha_hora: string;
-  usuario?: string;
-  turno?: string;
+  imagen_url: string;
   firma: boolean;
-  imagen_url?: string;
+  observacion: string;
+  turno: string;
   created_at: string;
   updated_at: string;
 }
@@ -68,17 +64,17 @@ const createFetcher = (periodType: PeriodType, periodValue: string) => async () 
   const dateRange = getDateRange(periodType, periodValue)
 
   const { data, error } = await supabase
-    .from('unified_records')
+    .from('siberia')
     .select('*')
     .gte('fecha_hora', dateRange.start)
     .lte('fecha_hora', dateRange.end)
     .order('fecha_hora', { ascending: false })
 
   if (error) {
-    console.error('Error fetching unified_records:', error)
+    console.error('Error fetching siberia records:', error)
     throw new Error(error.message)
   }
-  return (data || []) as UnifiedRecord[]
+  return (data || []) as SiberiaRecord[]
 }
 
 
@@ -93,13 +89,11 @@ export const useReportData = (periodType: PeriodType, periodValue: string) => {
   )
 
   const reportData = useMemo(() => {
-
-    // Calcular estadísticas básicas (solo Siberia)
-    const siberiaRecords = filteredData.filter((r) => r.source === 'siberia')
+    // Calcular estadísticas básicas
     const signedCount = filteredData.filter((r) => r.firma).length
     const signatureRate = filteredData.length > 0 ? Math.round((signedCount / filteredData.length) * 100) : 0
 
-    // Shifts
+    // Turnos
     const shiftCounts: Record<string, number> = { 'BRC-ERC': 0, 'IRC-KRC': 0 }
     filteredData.forEach(r => {
       if (r.turno && shiftCounts[r.turno] !== undefined) {
@@ -110,60 +104,41 @@ export const useReportData = (periodType: PeriodType, periodValue: string) => {
 
     const stats = {
       total: filteredData.length,
-      siberia: siberiaRecords.length,
       signed: signedCount,
       signatureRate,
       dominantShift,
       shiftCounts,
+      topAirline: { name: 'LATAM', count: filteredData.length }, // Solo LATAM
     }
 
-    // Agrupar por aerolínea
-    const airlineMap = new Map<string, number>();
-    filteredData.forEach((record) => {
-      if (record.aerolinea) {
-        const count = airlineMap.get(record.aerolinea) || 0;
-        airlineMap.set(record.aerolinea, count + 1);
-      }
-    });
-    const byAirline = Array.from(airlineMap.entries())
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-
-    // Agrupar por categoría
-    const categoryMap = new Map<string, number>();
-    filteredData.forEach((record) => {
-      if (record.categorias && Array.isArray(record.categorias)) {
-        record.categorias.forEach((cat) => {
-          const categoryName = `Categoría ${cat}`;
-          const count = categoryMap.get(categoryName) || 0;
-          categoryMap.set(categoryName, count + 1);
-        });
-      }
-    });
-    const byCategory = Array.from(categoryMap.entries())
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
+    // Datos por turno para gráfico
+    const byShift = [
+      { name: 'BRC-ERC', value: shiftCounts['BRC-ERC'] },
+      { name: 'IRC-KRC', value: shiftCounts['IRC-KRC'] },
+    ]
 
     // Top vuelos con más daños
-    const flightMap = new Map<string, { damages: number; airline?: string }>();
+    const flightMap = new Map<string, number>();
     filteredData.forEach((record) => {
       if (record.vuelo) {
-        const current = flightMap.get(record.vuelo) || { damages: 0, airline: record.aerolinea };
-        flightMap.set(record.vuelo, {
-          damages: current.damages + 1,
-          airline: current.airline || record.aerolinea,
-        });
+        const count = flightMap.get(record.vuelo) || 0;
+        flightMap.set(record.vuelo, count + 1);
       }
     });
     const topFlights = Array.from(flightMap.entries())
-      .map(([flight, data]) => ({ flight, ...data }))
+      .map(([flight, damages]) => ({ flight, damages }))
       .sort((a, b) => b.damages - a.damages)
       .slice(0, 5);
 
+    // Vuelo con más daños para KPI
+    const topFlight = topFlights.length > 0 ? topFlights[0] : null
+
     return {
-      stats,
-      byAirline,
-      byCategory,
+      stats: {
+        ...stats,
+        topFlight,
+      },
+      byShift,
       topFlights,
       hasData: filteredData.length > 0,
       rawData: filteredData,

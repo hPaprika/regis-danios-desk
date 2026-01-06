@@ -1,7 +1,7 @@
 import { useState } from "react"
 import {
-  Printer, Package, FileText, Loader, Plane, AlertTriangle,
-  Signature, Clock, Camera, Luggage, Mail
+  Printer, Package, FileText, Loader, Plane,
+  Signature, Clock
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,24 +11,19 @@ import { StatsCard } from "@/components/stats-card"
 import { ChartCard } from "@/components/chart-card"
 import {
   BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts"
 import { useReportData } from "@/hooks/useReportData"
 import { downloadPDFReport } from "@/lib/pdf-generator"
 import type { ReportData } from "@/components/pdf/ReportDocument"
-import { EmailReportDialog } from "@/components/modals/email-report-dialog"
-import { sendReportEmail } from "@/lib/send-email"
+// import { EmailReportDialog } from "@/components/modals/email-report-dialog"
 
 type PeriodType = 'day' | 'week' | 'month' | 'year'
 
-const AIRLINE_COLORS: Record<string, string> = {
-  'LATAM': '#22088c',
-  'SKY': '#6c2679',
-  'JET SMART': '#003d6a',
-  'AVIANCA': '#dc3024',
+const SHIFT_COLORS: Record<string, string> = {
+  'BRC-ERC': '#f59e0b',
+  'IRC-KRC': '#3b82f6',
 }
-
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#A28BFF", "#FF6666",];
 
 // Helper function to get week number
 const getWeekNumber = (date: Date): number => {
@@ -70,7 +65,7 @@ export function ReportsPage() {
   )
   const [hasReport, setHasReport] = useState(false)
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
-  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false)
+  // const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false)
 
   // Update period value when period type changes
   const handlePeriodTypeChange = (newType: PeriodType) => {
@@ -92,7 +87,7 @@ export function ReportsPage() {
     }
   }
 
-  const { stats, byAirline, byCategory, topFlights, damagesByShiftAndAirline, hasData, isLoading, error } = useReportData(
+  const { stats, byShift, topFlights, hasData, isLoading, error } = useReportData(
     periodType,
     periodValue
   )
@@ -110,9 +105,9 @@ export function ReportsPage() {
       const reportData: ReportData = {
         month: periodLabel,
         year: '',
-        stats,
-        byAirline,
-        byCategory,
+        // stats,
+        byAirline: [{ name: 'LATAM', value: stats.total }],
+        byCategory: [],
         topFlights,
         generatedDate: new Date().toLocaleDateString('es-PE', {
           year: 'numeric',
@@ -137,36 +132,36 @@ export function ReportsPage() {
     window.print()
   }
 
-  const handleSendEmail = async (email: string) => {
-    if (!hasData) return
+  // const handleSendEmail = async (email: string) => {
+  //   if (!hasData) return
 
-    const periodLabel = getPeriodLabel(periodType, periodValue)
-    const generatedDate = new Date().toLocaleDateString('es-PE', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+  //   const periodLabel = getPeriodLabel(periodType, periodValue)
+  //   const generatedDate = new Date().toLocaleDateString('es-PE', {
+  //     year: 'numeric',
+  //     month: 'long',
+  //     day: 'numeric',
+  //     hour: '2-digit',
+  //     minute: '2-digit',
+  //   })
 
-    await sendReportEmail({
-      to: email,
-      subject: `Reporte de Daños - ${periodLabel}`,
-      stats,
-      byAirline,
-      byCategory,
-      topFlights,
-      periodLabel,
-      generatedDate,
-    })
-  }
+  //   // await sendReportEmail({
+  //   //   to: email,
+  //   //   subject: `Reporte de Daños LATAM - ${periodLabel}`,
+  //   //   // stats,
+  //   //   byAirline: [{ name: 'LATAM', value: stats.total }],
+  //   //   byCategory: [],
+  //   //   topFlights,
+  //   //   periodLabel,
+  //   //   generatedDate,
+  //   // })
+  // }
 
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Reportes Personalizados</h1>
-        <p className="text-muted-foreground">Análisis y estadísticas detalladas de maletas dañadas</p>
+        <h1 className="text-3xl font-bold text-foreground">Reportes LATAM</h1>
+        <p className="text-muted-foreground">Análisis y estadísticas de maletas dañadas</p>
       </div>
 
       {/* Period Selector */}
@@ -286,7 +281,7 @@ export function ReportsPage() {
                   <CardTitle className="text-2xl">
                     {getPeriodLabel(periodType, periodValue)}
                   </CardTitle>
-                  <CardDescription>Resumen del período seleccionado</CardDescription>
+                  <CardDescription>Resumen del período seleccionado - LATAM</CardDescription>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -309,46 +304,44 @@ export function ReportsPage() {
                     <Printer className="h-4 w-4" />
                     <span className="hidden sm:inline">Imprimir</span>
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setIsEmailDialogOpen(true)} 
+                  {/* <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEmailDialogOpen(true)}
                     className="gap-2 bg-transparent"
                   >
                     <Mail className="h-4 w-4" />
                     <span className="hidden sm:inline">Enviar Email</span>
-                  </Button>
+                  </Button> */}
                 </div>
               </div>
             </CardHeader>
           </Card>
 
-          {/* KPIs - 6 Cards */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {/* KPIs - 5 Cards */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <StatsCard
               title="Total de Daños"
               value={stats.total}
-              icon={Luggage}
+              icon={Package}
               description={getPeriodLabel(periodType, periodValue)}
             />
 
-            {stats.topAirline && (
-              <StatsCard
-                title="Aerolínea con Más Daños"
-                value={stats.topAirline.name}
-                subtitle={`${stats.topAirline.count} daños`}
-                icon={Plane}
-                description="Líder del período"
-              />
-            )}
+            <StatsCard
+              title="Aerolínea"
+              value="LATAM"
+              subtitle={`${stats.total} daños`}
+              icon={Plane}
+              description="Única aerolínea"
+            />
 
-            {stats.topCategory && (
+            {stats.topFlight && (
               <StatsCard
-                title="Tipo de Daño Frecuente"
-                value={stats.topCategory.label}
-                subtitle={`${stats.topCategory.count} casos`}
-                icon={AlertTriangle}
-                description="Categoría predominante"
+                title="Vuelo con Más Daños"
+                value={stats.topFlight.flight}
+                subtitle={`${stats.topFlight.damages} casos`}
+                icon={Plane}
+                description="Vuelo más afectado"
               />
             )}
 
@@ -368,51 +361,16 @@ export function ReportsPage() {
               icon={Clock}
               description="Turno con más registros"
             />
-
-            <StatsCard
-              title="Casos Severos"
-              value={stats.siberia}
-              subtitle="Con fotografía"
-              icon={Camera}
-              description="Registros Siberia"
-            />
           </div>
 
           {/* Charts */}
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* By Airline */}
-            <ChartCard title="Daños por Aerolínea" description="Distribución de maletas dañadas">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={byAirline}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="name" stroke="var(--muted-foreground)" />
-                  <YAxis stroke="var(--muted-foreground)" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--card)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "0.5rem",
-                    }}
-                    labelStyle={{ color: "var(--foreground)" }}
-                  />
-                  <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                    {byAirline.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={AIRLINE_COLORS[entry.name] || '#64748b'}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            {/* By Type */}
-            <ChartCard title="Daños por Categoría" description="Categorización de daños">
+            {/* By Shift */}
+            <ChartCard title="Daños por Turno" description="Distribución de maletas dañadas por turno">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={byCategory}
+                    data={byShift}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
@@ -421,8 +379,8 @@ export function ReportsPage() {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {byCategory.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    {byShift.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={SHIFT_COLORS[entry.name] || '#64748b'} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -438,7 +396,7 @@ export function ReportsPage() {
             </ChartCard>
 
             {/* Top Flights */}
-            <ChartCard title="Vuelos con Más Daños" description="Top 5 vuelos afectados" className="lg:col-span-2">
+            <ChartCard title="Vuelos con Más Daños" description="Top 5 vuelos afectados">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topFlights} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -452,35 +410,11 @@ export function ReportsPage() {
                     }}
                     labelStyle={{ color: "var(--foreground)" }}
                   />
-                  <Bar dataKey="damages" fill="#f59e0b" radius={[0, 8, 8, 0]} />
+                  <Bar dataKey="damages" fill="#22088c" radius={[0, 8, 8, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartCard>
           </div>
-
-          {/* Stacked Bar Chart: Damages by Shift and Airline */}
-          <ChartCard title="Daños por Turno y Aerolínea" description="Distribución por turno y aerolínea">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={damagesByShiftAndAirline}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="shift" stroke="var(--muted-foreground)" />
-                <YAxis stroke="var(--muted-foreground)" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "var(--card)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "0.5rem",
-                  }}
-                  labelStyle={{ color: "var(--foreground)" }}
-                />
-                <Legend />
-                <Bar dataKey="LATAM" stackId="a" fill={AIRLINE_COLORS.LATAM} />
-                <Bar dataKey="SKY" stackId="a" fill={AIRLINE_COLORS.SKY} />
-                <Bar dataKey="JET SMART" stackId="a" fill={AIRLINE_COLORS['JET SMART']} />
-                <Bar dataKey="AVIANCA" stackId="a" fill={AIRLINE_COLORS.AVIANCA} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
         </>
       )}
 
@@ -496,12 +430,12 @@ export function ReportsPage() {
       )}
 
       {/* Email Dialog */}
-      <EmailReportDialog
+      {/* <EmailReportDialog
         open={isEmailDialogOpen}
         onOpenChange={setIsEmailDialogOpen}
         onSendEmail={handleSendEmail}
         reportPeriod={getPeriodLabel(periodType, periodValue)}
-      />
+      /> */}
     </div>
   )
 }

@@ -2,21 +2,13 @@
 
 import { useState } from "react"
 import useSWR from "swr"
-import { Search, MoreVertical, Trash2, Edit2, Loader, Calendar, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, Loader, Calendar, ChevronLeft, ChevronRight } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Circle, CircleCheckBig } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { EditSiberiaModal } from "@/components/modals/edit-siberia-modal"
-import { DeleteConfirmDialog } from "@/components/modals/delete-confirm-dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ImageViewerDialog } from "@/components/modals/image-viewer-dialog"
 import { supabase } from "@/lib/supabase/client"
 
@@ -27,7 +19,7 @@ interface SiberiaRecord {
   fecha_hora: string
   imagen_url: string
   firma: boolean
-  
+  turno: string
   usuario?: string
 }
 
@@ -38,20 +30,31 @@ const fetcher = async () => {
   return data || []
 }
 
+// Helper: format short date and time with two-digit year and HH:MM
+const formatShortDateTime = (iso?: string) => {
+  if (!iso) return { datePart: "", timePart: "" }
+  const d = new Date(iso)
+  const day = d.getDate()
+  const month = d.getMonth() + 1
+  const year = String(d.getFullYear()).slice(-2)
+  const datePart = `${day}/${month}/${year}`
+  const timePart = d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })
+  return { datePart, timePart }
+}
+
 export function SiberiaPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [dateFilter, setDateFilter] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [editingRecord, setEditingRecord] = useState<SiberiaRecord | null>(null)
-  const [deletingRecord, setDeletingRecord] = useState<SiberiaRecord | null>(null)
+  const [signatureFilter, setSignatureFilter] = useState<string>("all")
+  const [shiftFilter, setShiftFilter] = useState<string>("all")
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [viewingImage, setViewingImage] = useState<SiberiaRecord | null>(null)
-  const recordsPerPage = 10
+  const recordsPerPage = 15
 
   const {
     data: siberiaData = [],
     isLoading,
     error,
-    mutate,
   } = useSWR("siberia-page", fetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: true,
@@ -60,85 +63,67 @@ export function SiberiaPage() {
 
   const filteredData = siberiaData.filter(
     (item: SiberiaRecord) => {
-      const matchesSearch = 
+      const matchesSearch =
         item.codigo.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.vuelo.toLowerCase().includes(searchQuery.toLowerCase())
-      
+
+      // Filtrar por la fecha seleccionada (selectedDate) en lugar del dateFilter manual
+      const recordDate = new Date(item.fecha_hora).toISOString().split('T')[0]
+      const selectedDateStr = selectedDate.toISOString().split('T')[0]
       const matchesDate = dateFilter
-        ? new Date(item.fecha_hora).toISOString().split('T')[0] === dateFilter
-        : true
-      
-      return matchesSearch && matchesDate
+        ? recordDate === dateFilter
+        : recordDate === selectedDateStr
+
+      // Filtro de firma
+      const matchesFirma =
+        signatureFilter === "all" ? true :
+          signatureFilter === "con-firma" ? item.firma === true :
+            signatureFilter === "sin-firma" ? item.firma === false :
+              true
+
+      // Filtro de turno
+      const matchesTurno = shiftFilter === "all" ? true : item.turno === shiftFilter
+
+      return matchesSearch && matchesDate && matchesFirma && matchesTurno
     }
   )
 
-  // Paginación
-  const totalPages = Math.ceil(filteredData.length / recordsPerPage)
-  const paginatedData = filteredData.slice(
-    (currentPage - 1) * recordsPerPage,
-    currentPage * recordsPerPage
-  )
+  // Determinar si estamos viendo el día actual
+  const isToday = selectedDate.toISOString().split('T')[0] === new Date().toISOString().split('T')[0]
 
-  // Reset a página 1 cuando cambian los filtros
+  // Usar todos los datos filtrados (sin paginación, usaremos scroll interno)
+  const displayData = filteredData
+
+  // Reset cuando cambian los filtros
   const handleSearchChange = (value: string) => {
     setSearchQuery(value)
-    setCurrentPage(1)
   }
 
   const handleDateChange = (value: string) => {
     setDateFilter(value)
-    setCurrentPage(1)
   }
 
-  const handleEdit = (record: SiberiaRecord) => {
-    setEditingRecord(record)
+  // Navegar al día anterior
+  const goToPreviousDay = () => {
+    const previousDay = new Date(selectedDate)
+    previousDay.setDate(previousDay.getDate() - 1)
+    setSelectedDate(previousDay)
   }
 
-  const handleDelete = (record: SiberiaRecord) => {
-    setDeletingRecord(record)
+  // Navegar al día siguiente
+  const goToNextDay = () => {
+    const nextDay = new Date(selectedDate)
+    nextDay.setDate(nextDay.getDate() + 1)
+    setSelectedDate(nextDay)
+  }
+
+  // Volver al día actual
+  const goToToday = () => {
+    setSelectedDate(new Date())
   }
 
   const handleViewImage = (record: SiberiaRecord) => {
     setViewingImage(record)
-  }
-
-  const confirmDelete = async () => {
-    if (deletingRecord) {
-      try {
-        const { error } = await supabase
-          .rpc('delete_unified_record', {
-            p_id: deletingRecord.id,
-            p_source: 'siberia'
-          })
-
-        if (error) throw error
-        mutate()
-        setDeletingRecord(null)
-      } catch (error) {
-        console.error("Error deleting record:", error)
-      }
-    }
-  }
-
-  const handleSaveEdit = async (updatedRecord: SiberiaRecord) => {
-    try {
-      const { error } = await supabase
-        .rpc('update_unified_record', {
-          p_id: updatedRecord.id,
-          p_source: 'siberia',
-          p_codigo: updatedRecord.codigo,
-          p_vuelo: updatedRecord.vuelo,
-          p_fecha_hora: updatedRecord.fecha_hora,
-          p_imagen_url: updatedRecord.imagen_url,
-          p_firma: updatedRecord.firma
-        })
-
-      if (error) throw error
-      mutate()
-      setEditingRecord(null)
-    } catch (error) {
-      console.error("Error updating record:", error)
-    }
   }
 
   return (
@@ -155,7 +140,7 @@ export function SiberiaPage() {
           <div className="flex flex-col gap-2">
             <div>
               <CardTitle>Búsqueda y Filtros</CardTitle>
-              <CardDescription>Buscar por código o número de vuelo, y filtrar por fecha</CardDescription>
+              <CardDescription>Buscar por código o número de vuelo, y filtrar por fecha, firma y turno</CardDescription>
             </div>
             <div className="flex items-end flex-col sm:flex-row gap-4">
               <div className="relative flex-1 ">
@@ -167,7 +152,7 @@ export function SiberiaPage() {
                   className="pl-9 w-full"
                 />
               </div>
-              <div className="flex gap-2 items-end">
+              <div className="flex gap-2 items-end flex-wrap">
                 <div className="flex-1 sm:flex-initial">
                   <Label htmlFor="date-filter" className="text-xs mb-1 block">
                     Filtrar por fecha
@@ -183,13 +168,53 @@ export function SiberiaPage() {
                     />
                   </div>
                 </div>
-                {dateFilter && (
+                <div className="flex-1 sm:flex-initial">
+                  <Label htmlFor="firma-filter" className="text-xs mb-1 block">
+                    Filtrar por firma
+                  </Label>
+                  <Select value={signatureFilter} onValueChange={(value) => {
+                    setSignatureFilter(value)
+                    // setCurrentPage(1)
+                  }}>
+                    <SelectTrigger id="firma-filter" className="w-full sm:w-40">
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      <SelectItem value="con-firma">Con firma</SelectItem>
+                      <SelectItem value="sin-firma">Sin firma</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1 sm:flex-initial">
+                  <Label htmlFor="turno-filter" className="text-xs mb-1 block">
+                    Filtrar por turno
+                  </Label>
+                  <Select value={shiftFilter} onValueChange={(value) => {
+                    setShiftFilter(value)
+                    // setCurrentPage(1)
+                  }}>
+                    <SelectTrigger id="turno-filter" className="w-full sm:w-40">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="BRC-ERC">BRC-ERC</SelectItem>
+                      <SelectItem value="IRC-KRC">IRC-KRC</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {(dateFilter || signatureFilter !== "all" || shiftFilter !== "all") && (
                   <Button
                     variant="outline"
-                    onClick={() => handleDateChange("")}
+                    onClick={() => {
+                      handleDateChange("")
+                      setSignatureFilter("all")
+                      setShiftFilter("all")
+                    }}
                     size="sm"
                   >
-                    Limpiar
+                    Limpiar filtros
                   </Button>
                 )}
               </div>
@@ -201,149 +226,133 @@ export function SiberiaPage() {
       {/* Table */}
       <Card>
         <CardContent className="p-0">
+          {/* Scroll interno cuando hay más de recordsPerPage registros */}
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-card">
-                  <th className="px-6 py-3 text-left font-semibold text-foreground">Código</th>
-                  <th className="px-6 py-3 text-left font-semibold text-foreground">Vuelo</th>
-                  <th className="px-6 py-3 text-left font-semibold text-foreground">Fecha/Hora</th>
-                  <th className="px-6 py-3 text-left font-semibold text-foreground">Foto</th>
-                  <th className="px-6 py-3 text-center font-semibold text-foreground">Firma</th>
-                  <th className="px-6 py-3 text-center font-semibold text-foreground">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
-                      <div className="flex items-center justify-center gap-2">
-                        <Loader className="h-4 w-4 animate-spin" />
-                        Cargando registros...
-                      </div>
-                    </td>
+            <div className={filteredData.length > recordsPerPage ? "max-h-[800px] overflow-y-auto" : ""}>
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b border-border bg-card">
+                    <th className="px-6 py-3 text-left font-semibold text-foreground">Código</th>
+                    <th className="px-6 py-3 text-left font-semibold text-foreground">Vuelo</th>
+                    <th className="px-6 py-3 text-center font-semibold text-foreground">Firma</th>
+                    <th className="px-6 py-3 text-left font-semibold text-foreground">Foto</th>
+                    <th className="px-6 py-3 text-center font-semibold text-foreground">Turno</th>
+                    <th className="px-6 py-3 text-left font-semibold text-foreground">Fecha/Hora</th>
                   </tr>
-                ) : error ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-destructive">
-                      Error al cargar registros
-                    </td>
-                  </tr>
-                ) : filteredData.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
-                      No se encontraron registros
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedData.map((record: SiberiaRecord) => (
-                    <tr key={record.id} className="border-b border-border transition-colors hover:bg-muted/50">
-                      <td className="px-6 py-4 font-mono font-semibold text-foreground">{record.codigo}</td>
-                      <td className="px-6 py-4 text-foreground">{record.vuelo}</td>
-                      <td className="px-6 py-4 text-muted-foreground">
-                        {new Date(record.fecha_hora).toLocaleString("es-CL")}
-                      </td>
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={() => handleViewImage(record)}
-                          className="relative h-20 w-20 overflow-hidden rounded-lg border border-border transition-transform hover:scale-105 cursor-pointer"
-                        >
-                          <img
-                            src={record.imagen_url || "/placeholder.svg"}
-                            alt={`Foto de maleta ${record.codigo}`}
-                            className="h-full w-full object-cover"
-                          />
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {record.firma ? (
-                          <Badge className="bg-success text-white">✓</Badge>
-                        ) : (
-                          <Badge variant="outline">✗</Badge>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleViewImage(record)} className="gap-2 cursor-pointer">
-                              <Search className="h-4 w-4" />
-                              <span>Ver Foto</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(record)} className="gap-2 cursor-pointer">
-                              <Edit2 className="h-4 w-4" />
-                              <span>Editar</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(record)}
-                              className="gap-2 cursor-pointer text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span>Eliminar</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                </thead>
+                <tbody>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                        <div className="flex items-center justify-center gap-2">
+                          <Loader className="h-4 w-4 animate-spin" />
+                          Cargando registros...
+                        </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : error ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-destructive">
+                        Error al cargar registros
+                      </td>
+                    </tr>
+                  ) : filteredData.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                        No se encontraron registros para esta fecha
+                      </td>
+                    </tr>
+                  ) : (
+                    displayData.map((record: SiberiaRecord) => {
+                      const { datePart, timePart } = formatShortDateTime(record.fecha_hora)
+                      // El turno viene de la base de datos
+                      const turno = record.turno
+
+                      return (
+                        <tr key={record.id} className="border-b border-border transition-colors hover:bg-muted/50">
+                          <td className="px-6 py-4 font-mono font-semibold text-foreground">{record.codigo}</td>
+                          <td className="px-6 py-4 text-foreground">{record.vuelo}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-center">
+                              {record.firma ? (
+                                <CircleCheckBig className="h-5 w-5 text-green-600" aria-hidden="true" />
+                              ) : (
+                                <Circle className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <button
+                              onClick={() => handleViewImage(record)}
+                              className="relative h-20 w-20 overflow-hidden rounded-lg border border-border transition-transform hover:scale-105 cursor-pointer"
+                            >
+                              <img
+                                src={record.imagen_url || "/placeholder.svg"}
+                                alt={`Foto de maleta ${record.codigo}`}
+                                className="h-full w-full object-cover"
+                              />
+                            </button>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${turno === "BRC-ERC"
+                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                              : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                              }`}>
+                              {turno}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-muted-foreground">
+                            <div className="text-sm leading-snug">
+                              <div>{datePart}</div>
+                              <div>{timePart}</div>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-          
-          {/* Paginación */}
-          {filteredData.length > 0 && (
-            <div className="flex items-center justify-between px-6 py-4 border-t border-border">
-              <p className="text-sm text-muted-foreground">
-                Mostrando {((currentPage - 1) * recordsPerPage) + 1} - {Math.min(currentPage * recordsPerPage, filteredData.length)} de {filteredData.length} registros
-              </p>
-              <div className="flex gap-2">
+
+          {/* Navegación por fecha */}
+          <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+            <p className="text-sm text-muted-foreground">
+              {filteredData.length} {filteredData.length === 1 ? 'registro' : 'registros'} - {selectedDate.toLocaleDateString('es-PE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+            <div className="flex gap-2 items-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToPreviousDay}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Día anterior
+              </Button>
+              {!isToday && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
+                  onClick={goToToday}
                 >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Anterior
+                  Hoy
                 </Button>
-                <div className="flex items-center px-3 text-sm">
-                  Página {currentPage} de {totalPages}
-                </div>
+              )}
+              {!isToday && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
+                  onClick={goToNextDay}
                 >
-                  Siguiente
+                  Día siguiente
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
-              </div>
+              )}
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
-
-      {/* Modals */}
-      {editingRecord && (
-        <EditSiberiaModal record={editingRecord} onClose={() => setEditingRecord(null)} onSave={handleSaveEdit} />
-      )}
-
-      {deletingRecord && (
-        <DeleteConfirmDialog
-          title="Eliminar registro"
-          description={`¿Estás seguro de que deseas eliminar el registro ${deletingRecord.codigo}? Esta acción no se puede deshacer.`}
-          onConfirm={confirmDelete}
-          onCancel={() => setDeletingRecord(null)}
-        />
-      )}
-
       {viewingImage && <ImageViewerDialog record={viewingImage} onClose={() => setViewingImage(null)} />}
     </div>
   )

@@ -132,12 +132,12 @@ const styles = StyleSheet.create({
 export interface ReportData {
   month: string;
   year: string;
-  stats: {
-    total: number;
-    counter: number;
-    siberia: number;
-    signed: number;
-  };
+  // stats: {
+  //   total: number;
+  //   counter: number;
+  //   siberia: number;
+  //   signed: number;
+  // };
   byAirline: Array<{ name: string; value: number }>;
   byCategory: Array<{ name: string; value: number }>;
   topFlights: Array<{ flight: string; damages: number; airline?: string }>;
@@ -166,20 +166,16 @@ export const ReportDocument = ({ data }: ReportDocumentProps) => (
         <View style={styles.statsContainer}>
           <View style={styles.statBox}>
             <Text style={styles.statLabel}>Total de Maletas</Text>
-            <Text style={styles.statValue}>{data.stats.total}</Text>
+            {/* <Text style={styles.statValue}>{data.stats.total}</Text> */}
           </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statLabel}>Counter</Text>
-            <Text style={styles.statValue}>{data.stats.counter}</Text>
-          </View>
-          <View style={styles.statBox}>
+          {/* <View style={styles.statBox}>
             <Text style={styles.statLabel}>Siberia</Text>
             <Text style={styles.statValue}>{data.stats.siberia}</Text>
-          </View>
-          <View style={styles.statBox}>
+          </View> */}
+          {/* <View style={styles.statBox}>
             <Text style={styles.statLabel}>Con Firma</Text>
             <Text style={styles.statValue}>{data.stats.signed}</Text>
-          </View>
+          </View> */}
         </View>
       </View>
 

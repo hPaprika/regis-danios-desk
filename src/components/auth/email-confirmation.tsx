@@ -55,7 +55,7 @@ export function EmailConfirmation() {
   }, [searchParams, navigate])
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-background to-muted p-4">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />

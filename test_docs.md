@@ -1,8 +1,8 @@
-# Documentación de Pruebas - RegisDaños
+# Documentación de Pruebas - RegisBags
 
 ## Resumen Ejecutivo
 
-Este documento detalla la implementación y resultados de las pruebas unitarias e integración para el proyecto RegisDaños, un sistema de administración de maletas dañadas para Talma Servicios Aeroportuarios.
+Este documento detalla la implementación y resultados de las pruebas unitarias e integración para el proyecto RegisBags, un sistema de administración de maletas dañadas para Talma Servicios Aeroportuarios.
 
 **Fecha de implementación:** 23 de Noviembre, 2025  
 **Framework de pruebas:** Vitest 4.0.13  
@@ -381,7 +381,7 @@ pnpm test -- --reporter=verbose
 
 ## Conclusiones
 
-La implementación de pruebas para RegisDaños ha alcanzado una cobertura inicial sólida del **70.9%** de las pruebas pasando exitosamente. Se han creado **79 pruebas** distribuidas en **10 archivos**, cubriendo:
+La implementación de pruebas para RegisBags ha alcanzado una cobertura inicial sólida del **70.9%** de las pruebas pasando exitosamente. Se han creado **79 pruebas** distribuidas en **10 archivos**, cubriendo:
 
 ✅ **Componentes UI básicos** (Button, Input, Card)  
 ✅ **Componentes de negocio** (StatsCard)  
@@ -401,4 +401,4 @@ El proyecto cuenta con una base sólida de testing que facilita:
 
 **Última actualización:** 23 de Noviembre, 2025  
 **Autor:** Sistema de Testing Automatizado  
-**Proyecto:** RegisDaños - Talma Servicios Aeroportuarios
+**Proyecto:** RegisBags - Talma Servicios Aeroportuarios
