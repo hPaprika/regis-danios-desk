@@ -54,7 +54,6 @@ export function LoginForm() {
     setError("")
     setSuccessMessage("")
 
-    // Validaciones
     if (password.length < 6) {
       setError("La contraseña debe tener al menos 6 caracteres.")
       return
@@ -85,12 +84,13 @@ export function LoginForm() {
       }
 
       if (data.user) {
-        setSuccessMessage("¡Registro exitoso! Revisa tu correo para confirmar tu cuenta.")
-        // Limpiar formulario
+        setSuccessMessage(
+          "¡Registro exitoso! Revisa tu correo para confirmar tu cuenta." +
+          "verifica también la carpeta de SPAM o Correo no deseado."
+        )
         setEmail("")
         setPassword("")
         setConfirmPassword("")
-        // Cambiar a modo login después de 3 segundos
         setTimeout(() => {
           setIsRegistering(false)
           setSuccessMessage("")

@@ -67,12 +67,22 @@ export function SiberiaPage() {
         item.codigo.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.vuelo.toLowerCase().includes(searchQuery.toLowerCase())
 
-      // Filtrar por la fecha seleccionada (selectedDate) en lugar del dateFilter manual
-      const recordDate = new Date(item.fecha_hora).toISOString().split('T')[0]
-      const selectedDateStr = selectedDate.toISOString().split('T')[0]
-      const matchesDate = dateFilter
-        ? recordDate === dateFilter
-        : recordDate === selectedDateStr
+      // Filtrar por fecha: priorizar dateFilter manual, sino usar selectedDate
+      const recordDate = new Date(item.fecha_hora)
+      // Normalizar la fecha del registro a medianoche en zona horaria local
+      const recordDateOnly = new Date(recordDate.getFullYear(), recordDate.getMonth(), recordDate.getDate())
+
+      let targetDate: Date
+      if (dateFilter) {
+        // Si hay un filtro manual de fecha, usarlo
+        const [year, month, day] = dateFilter.split('-').map(Number)
+        targetDate = new Date(year, month - 1, day)
+      } else {
+        // Sino, usar selectedDate normalizado
+        targetDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())
+      }
+
+      const matchesDate = recordDateOnly.getTime() === targetDate.getTime()
 
       // Filtro de firma
       const matchesFirma =
@@ -101,6 +111,11 @@ export function SiberiaPage() {
 
   const handleDateChange = (value: string) => {
     setDateFilter(value)
+    // Si se establece un filtro manual, sincronizar selectedDate
+    if (value) {
+      const [year, month, day] = value.split('-').map(Number)
+      setSelectedDate(new Date(year, month - 1, day))
+    }
   }
 
   // Navegar al día anterior
@@ -108,6 +123,8 @@ export function SiberiaPage() {
     const previousDay = new Date(selectedDate)
     previousDay.setDate(previousDay.getDate() - 1)
     setSelectedDate(previousDay)
+    // Limpiar el filtro manual para que use selectedDate
+    setDateFilter("")
   }
 
   // Navegar al día siguiente
@@ -115,11 +132,15 @@ export function SiberiaPage() {
     const nextDay = new Date(selectedDate)
     nextDay.setDate(nextDay.getDate() + 1)
     setSelectedDate(nextDay)
+    // Limpiar el filtro manual para que use selectedDate
+    setDateFilter("")
   }
 
   // Volver al día actual
   const goToToday = () => {
     setSelectedDate(new Date())
+    // Limpiar el filtro manual para que use selectedDate
+    setDateFilter("")
   }
 
   const handleViewImage = (record: SiberiaRecord) => {
@@ -201,6 +222,7 @@ export function SiberiaPage() {
                       <SelectItem value="all">Todos</SelectItem>
                       <SelectItem value="BRC-ERC">BRC-ERC</SelectItem>
                       <SelectItem value="IRC-KRC">IRC-KRC</SelectItem>
+                      <SelectItem value="ZRC-ARC">ZRC-ARC</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -295,8 +317,12 @@ export function SiberiaPage() {
                           </td>
                           <td className="px-6 py-4 text-center">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${turno === "BRC-ERC"
-                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                              : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                                : turno === "IRC-KRC"
+                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                                  : turno === "ZRC-ARC"
+                                    ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+                                    : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
                               }`}>
                               {turno}
                             </span>
