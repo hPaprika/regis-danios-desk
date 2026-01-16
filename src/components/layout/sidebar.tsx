@@ -2,15 +2,14 @@
 
 import { useState } from "react"
 import { Link, useLocation } from "react-router-dom"
-// BarChart3 from lucide-react is imported but not used currently
-import { Menu, X, LayoutDashboard, BaggageClaim, ChevronLeft, ChevronRight } from "lucide-react"
+import { Menu, X, LayoutDashboard, BaggageClaim, BarChart3, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 const navItems = [
   { href: "/", label: "Panel principal", icon: LayoutDashboard },
   { href: "/siberia", label: "Siberia", icon: BaggageClaim },
-  // { href: "/reports", label: "Reportes", icon: BarChart3 },
+  { href: "/reports", label: "Reportes", icon: BarChart3 },
 ]
 
 export function Sidebar() {
@@ -32,7 +31,7 @@ export function Sidebar() {
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-40 border-r border-border bg-card transition-smooth md:relative md:translate-x-0",
-          isCollapsed ? "w-20" : "w-64",
+          isCollapsed ? "w-20" : "w-56",
           isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >

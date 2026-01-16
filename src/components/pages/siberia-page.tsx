@@ -20,7 +20,7 @@ interface SiberiaRecord {
   imagen_url: string
   firma: boolean
   turno: string
-  usuario?: string
+  observacion: string
 }
 
 const fetcher = async () => {
@@ -258,6 +258,7 @@ export function SiberiaPage() {
                     <th className="px-6 py-3 text-left font-semibold text-foreground">Vuelo</th>
                     <th className="px-6 py-3 text-center font-semibold text-foreground">Firma</th>
                     <th className="px-6 py-3 text-left font-semibold text-foreground">Foto</th>
+                    <th className="px-6 py-3 text-center font-semibold text-foreground">Observaciónes</th>
                     <th className="px-6 py-3 text-center font-semibold text-foreground">Turno</th>
                     <th className="px-6 py-3 text-left font-semibold text-foreground">Fecha/Hora</th>
                   </tr>
@@ -315,14 +316,17 @@ export function SiberiaPage() {
                               />
                             </button>
                           </td>
+                          <td className="px-3 py-2 text-sm text-gray-500 max-w-60 truncate">
+                            {record.observacion}
+                          </td>
                           <td className="px-6 py-4 text-center">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${turno === "BRC-ERC"
-                                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                                : turno === "IRC-KRC"
-                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                                  : turno === "ZRC-ARC"
-                                    ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-                                    : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                              : turno === "IRC-KRC"
+                                ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                                : turno === "ZRC-ARC"
+                                  ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+                                  : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
                               }`}>
                               {turno}
                             </span>
