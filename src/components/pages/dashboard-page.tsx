@@ -5,22 +5,18 @@ import {
   FileX, AlertCircle
 } from "lucide-react"
 import { StatsCard } from "@/components/stats-card"
-import { ChartCard } from "@/components/chart-card"
 import { FilterBar } from "@/components/filter-bar"
 import { ChartPieDonut } from "@/components/charts/chart-pie-donut"
 import { ChartBarMultiple } from "@/components/charts/chart-bar-multiple"
 import { ChartBarHorizontal } from "@/components/charts/chart-bar-horizontal"
+import { ChartLineTemporal } from "@/components/charts/chart-line-temporal"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { LineChart, Line } from "recharts"
 import { Card, CardContent }
   from "@/components/ui/card"
 import { Alert, AlertDescription }
   from "@/components/ui/alert"
-import {
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
-} from "recharts"
 import supabase from "@/lib/supabase/client"
 
 // types & interfaces
@@ -184,28 +180,7 @@ export function DashboardPage() {
     }
   }, [filteredByDate])
 
-  // Chart Data: Temporal Trend (Last 7 Days)
-  const temporalTrend = useMemo(() => {
-    const last7Days = Array.from({ length: 7 }, (_, i) => {
-      const date = new Date()
-      date.setDate(date.getDate() - (6 - i))
-      return {
-        date: date.toISOString().split('T')[0],
-        label: date.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }),
-        siberia: 0
-      }
-    })
 
-    unifiedData.forEach(record => {
-      const recordDate = new Date(record.fecha_hora).toISOString().split('T')[0]
-      const dayData = last7Days.find(d => d.date === recordDate)
-      if (dayData) {
-        dayData.siberia++
-      }
-    })
-
-    return last7Days
-  }, [unifiedData])
 
   // Chart Data: Signature Comparison (Pie Donut)
   const signatureData = useMemo(() => {
@@ -308,19 +283,13 @@ export function DashboardPage() {
     })
   }
 
-  // Y-axis ticks: show integer counts (0..max) to avoid fractional ticks
-  const yTicks = useMemo(() => {
-    const max = Math.max(1, ...temporalTrend.map(d => d.siberia || 0))
-    return Array.from({ length: max + 1 }, (_, i) => i)
-  }, [temporalTrend])
-
   return (
     <>
       <div className="space-y-6 p-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">KPIs</h1>
+            <h1 className="text-3xl font-bold">Indicadores Clave</h1>
             <p className="text-muted-foreground">
               {viewMode === 'today'
                 ? new Date().toLocaleDateString('es-PE', {
@@ -430,7 +399,6 @@ export function DashboardPage() {
           )
         }
 
-
         {/* Grid layout (3x3) mapping: 1..3 = KPI cards, 4 = Charts Grid, 5-7 placeholders */}
         {!isLoading && filteredByDate.length > 0 && (
           <div className="grid grid-cols-3 gap-4">
@@ -478,35 +446,14 @@ export function DashboardPage() {
             </div>
 
             <div className="col-span-2">
-              <ChartCard title="Tendencia Últimos 7 Días" description="Evolución de daños en la última semana">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={temporalTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="label" stroke="var(--muted-foreground)" />
-                    <YAxis stroke="var(--muted-foreground)" ticks={yTicks} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "var(--card)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "0.5rem",
-                      }}
-                      labelStyle={{ color: "var(--foreground)" }}
-                    />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="siberia"
-                      stroke="#10b981"
-                      strokeWidth={2}
-                      dot={{ fill: "#10b981" }}
-                      name="Total"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartCard>
+              <ChartLineTemporal
+                data={filteredByDate}
+                viewMode={viewMode}
+                selectedMonth={selectedMonth}
+              />
             </div>
 
-            <div className="col-start-3">
+            <div>
               <ChartPieDonut data={signatureData} total={filteredByDate.length} />
             </div>
 

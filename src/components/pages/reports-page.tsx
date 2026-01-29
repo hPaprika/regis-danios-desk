@@ -1,29 +1,14 @@
 import { useState } from "react"
 import {
-  Printer, Package, FileText, Loader, Plane,
-  Signature, Clock
+  Printer, Package, FileText, Loader
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { StatsCard } from "@/components/stats-card"
-import { ChartCard } from "@/components/chart-card"
-import {
-  BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
-} from "recharts"
 import { useReportData } from "@/hooks/useReportData"
-import { downloadPDFReport } from "@/lib/pdf-generator"
-import type { ReportData } from "@/components/pdf/ReportDocument"
-// import { EmailReportDialog } from "@/components/modals/email-report-dialog"
 
 type PeriodType = 'day' | 'week' | 'month' | 'year'
-
-const SHIFT_COLORS: Record<string, string> = {
-  'BRC-ERC': '#f59e0b',
-  'IRC-KRC': '#3b82f6',
-}
 
 // Helper function to get week number
 const getWeekNumber = (date: Date): number => {
@@ -65,7 +50,6 @@ export function ReportsPage() {
   )
   const [hasReport, setHasReport] = useState(false)
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
-  // const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false)
 
   // Update period value when period type changes
   const handlePeriodTypeChange = (newType: PeriodType) => {
@@ -87,7 +71,7 @@ export function ReportsPage() {
     }
   }
 
-  const { stats, byShift, topFlights, hasData, isLoading, error } = useReportData(
+  const { hasData, isLoading, error } = useReportData(
     periodType,
     periodValue
   )
@@ -101,25 +85,9 @@ export function ReportsPage() {
 
     setIsGeneratingPDF(true)
     try {
-      const periodLabel = getPeriodLabel(periodType, periodValue)
-      const reportData: ReportData = {
-        month: periodLabel,
-        year: '',
-        // stats,
-        byAirline: [{ name: 'LATAM', value: stats.total }],
-        byCategory: [],
-        topFlights,
-        generatedDate: new Date().toLocaleDateString('es-PE', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-      }
-
-      const filename = `reporte_${periodLabel.replace(/\s/g, '_')}.pdf`
-      await downloadPDFReport(reportData, filename)
+      // TODO: Implement PDF generation logic here
+      // This could involve using a library like jsPDF
+      // to create a PDF document based on the report data
     } catch (error) {
       console.error('Error al generar PDF:', error)
       alert('Error al generar el reporte PDF. Por favor, intenta nuevamente.')
@@ -131,30 +99,6 @@ export function ReportsPage() {
   const handlePrint = () => {
     window.print()
   }
-
-  // const handleSendEmail = async (email: string) => {
-  //   if (!hasData) return
-
-  //   const periodLabel = getPeriodLabel(periodType, periodValue)
-  //   const generatedDate = new Date().toLocaleDateString('es-PE', {
-  //     year: 'numeric',
-  //     month: 'long',
-  //     day: 'numeric',
-  //     hour: '2-digit',
-  //     minute: '2-digit',
-  //   })
-
-  //   // await sendReportEmail({
-  //   //   to: email,
-  //   //   subject: `Reporte de Daños LATAM - ${periodLabel}`,
-  //   //   // stats,
-  //   //   byAirline: [{ name: 'LATAM', value: stats.total }],
-  //   //   byCategory: [],
-  //   //   topFlights,
-  //   //   periodLabel,
-  //   //   generatedDate,
-  //   // })
-  // }
 
   return (
     <div className="space-y-6 p-6">
@@ -304,117 +248,10 @@ export function ReportsPage() {
                     <Printer className="h-4 w-4" />
                     <span className="hidden sm:inline">Imprimir</span>
                   </Button>
-                  {/* <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsEmailDialogOpen(true)}
-                    className="gap-2 bg-transparent"
-                  >
-                    <Mail className="h-4 w-4" />
-                    <span className="hidden sm:inline">Enviar Email</span>
-                  </Button> */}
                 </div>
               </div>
             </CardHeader>
           </Card>
-
-          {/* KPIs - 5 Cards */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            <StatsCard
-              title="Total de Daños"
-              value={stats.total}
-              icon={Package}
-              description={getPeriodLabel(periodType, periodValue)}
-            />
-
-            <StatsCard
-              title="Aerolínea"
-              value="LATAM"
-              subtitle={`${stats.total} daños`}
-              icon={Plane}
-              description="Única aerolínea"
-            />
-
-            {stats.topFlight && (
-              <StatsCard
-                title="Vuelo con Más Daños"
-                value={stats.topFlight.flight}
-                subtitle={`${stats.topFlight.damages} casos`}
-                icon={Plane}
-                description="Vuelo más afectado"
-              />
-            )}
-
-            <StatsCard
-              title="Tasa de Firmas"
-              value={`${stats.signatureRate}%`}
-              subtitle={`${stats.signed}/${stats.total}`}
-              icon={Signature}
-              description={stats.signatureRate >= 80 ? "✓ Objetivo cumplido" : "⚠ Por debajo del objetivo"}
-              trend={{ value: stats.signatureRate, isPositive: stats.signatureRate >= 80 }}
-            />
-
-            <StatsCard
-              title="Comparativa Turnos"
-              value={stats.dominantShift}
-              subtitle={`${stats.shiftCounts[stats.dominantShift]} vs ${stats.shiftCounts[stats.dominantShift === 'BRC-ERC' ? 'IRC-KRC' : 'BRC-ERC']}`}
-              icon={Clock}
-              description="Turno con más registros"
-            />
-          </div>
-
-          {/* Charts */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* By Shift */}
-            <ChartCard title="Daños por Turno" description="Distribución de maletas dañadas por turno">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={byShift}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, value }) => `${name}: ${value}`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {byShift.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={SHIFT_COLORS[entry.name] || '#64748b'} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--card)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "0.5rem",
-                    }}
-                    labelStyle={{ color: "var(--foreground)" }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            {/* Top Flights */}
-            <ChartCard title="Vuelos con Más Daños" description="Top 5 vuelos afectados">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topFlights} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis type="number" stroke="var(--muted-foreground)" />
-                  <YAxis dataKey="flight" type="category" stroke="var(--muted-foreground)" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--card)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "0.5rem",
-                    }}
-                    labelStyle={{ color: "var(--foreground)" }}
-                  />
-                  <Bar dataKey="damages" fill="#22088c" radius={[0, 8, 8, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
-          </div>
         </>
       )}
 
@@ -428,14 +265,6 @@ export function ReportsPage() {
           </CardContent>
         </Card>
       )}
-
-      {/* Email Dialog */}
-      {/* <EmailReportDialog
-        open={isEmailDialogOpen}
-        onOpenChange={setIsEmailDialogOpen}
-        onSendEmail={handleSendEmail}
-        reportPeriod={getPeriodLabel(periodType, periodValue)}
-      /> */}
     </div>
   )
 }
