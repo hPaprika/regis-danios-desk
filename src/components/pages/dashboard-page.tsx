@@ -401,7 +401,7 @@ export function DashboardPage() {
 
         {/* Grid layout (3x3) mapping: 1..3 = KPI cards, 4 = Charts Grid, 5-7 placeholders */}
         {!isLoading && filteredByDate.length > 0 && (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-4 auto-rows-[minmax(12rem,auto)] items-stretch">
             <div>
               <StatsCard
                 title={
@@ -424,7 +424,7 @@ export function DashboardPage() {
               />
             </div>
 
-            <div>
+            <div className="">
               <StatsCard
                 title="Tasa de Firmas"
                 value={`${stats.signatureRate}%`}
@@ -445,7 +445,7 @@ export function DashboardPage() {
               />
             </div>
 
-            <div className="col-span-2">
+            <div className="col-span-3">
               <ChartLineTemporal
                 data={filteredByDate}
                 viewMode={viewMode}
@@ -453,16 +453,16 @@ export function DashboardPage() {
               />
             </div>
 
-            <div>
+            <div className="h-full">
               <ChartPieDonut data={signatureData} total={filteredByDate.length} />
             </div>
 
-            <div>
-              <ChartBarHorizontal data={topFlightsData} />
+            <div className="col-span-2 row-span-2 h-full">
+              <ChartBarMultiple data={shiftComparisonData} viewMode={viewMode} />
             </div>
 
-            <div className="col-span-2">
-              <ChartBarMultiple data={shiftComparisonData} viewMode={viewMode} />
+            <div className="h-full">
+              <ChartBarHorizontal data={topFlightsData} />
             </div>
           </div>
         )}

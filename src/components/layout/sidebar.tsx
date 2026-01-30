@@ -84,7 +84,7 @@ export function Sidebar() {
 
           {/* Footer */}
           <div className="border-t border-border px-4 py-4">
-            {!isCollapsed && <p className="text-xs text-muted-foreground">&copy; 2025 RegisBags</p>}
+            {!isCollapsed && <p className="text-xs text-muted-foreground">&copy; 2026 RegisBags</p>}
           </div>
         </div>
       </aside>
