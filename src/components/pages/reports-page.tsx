@@ -1,12 +1,14 @@
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import {
-  Printer, Package, FileText, Loader
+  FileSpreadsheet, Package, FileText, Loader
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useReportData } from "@/hooks/useReportData"
+import { ReportPreview } from "@/components/report-preview"
+import { generatePDF, generateCSV, getReportFileName } from "@/lib/export-utils"
 
 type PeriodType = 'day' | 'week' | 'month' | 'year'
 
@@ -43,10 +45,15 @@ const getPeriodLabel = (periodType: PeriodType, periodValue: string): string => 
 }
 
 export function ReportsPage() {
-  const currentDate = new Date()
-  const [periodType, setPeriodType] = useState<PeriodType>('month')
+  const reportRef = useRef<HTMLDivElement>(null)
+
+  // Calcular el día anterior (ayer) como fecha por defecto
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  const [periodType, setPeriodType] = useState<PeriodType>('day')
   const [periodValue, setPeriodValue] = useState<string>(
-    `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`
+    yesterday.toISOString().split('T')[0]
   )
   const [hasReport, setHasReport] = useState(false)
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
@@ -54,6 +61,7 @@ export function ReportsPage() {
   // Update period value when period type changes
   const handlePeriodTypeChange = (newType: PeriodType) => {
     setPeriodType(newType)
+    const currentDate = new Date()
     switch (newType) {
       case 'day':
         setPeriodValue(currentDate.toISOString().split('T')[0])
@@ -71,23 +79,29 @@ export function ReportsPage() {
     }
   }
 
-  const { hasData, isLoading, error } = useReportData(
+  const { hasData, isLoading, error, rawData } = useReportData(
     periodType,
     periodValue
   )
+
+  // Auto-generar reporte cuando hay datos disponibles
+  useEffect(() => {
+    if (hasData && !isLoading) {
+      setHasReport(true)
+    }
+  }, [hasData, isLoading])
 
   const handleGenerateReport = () => {
     setHasReport(true)
   }
 
   const handleDownloadPDF = async () => {
-    if (!hasData) return
+    if (!hasData || !reportRef.current || !rawData) return
 
     setIsGeneratingPDF(true)
     try {
-      // TODO: Implement PDF generation logic here
-      // This could involve using a library like jsPDF
-      // to create a PDF document based on the report data
+      const fileName = getReportFileName(new Date(periodValue))
+      generatePDF(reportRef.current, rawData, periodValue, fileName)
     } catch (error) {
       console.error('Error al generar PDF:', error)
       alert('Error al generar el reporte PDF. Por favor, intenta nuevamente.')
@@ -96,15 +110,23 @@ export function ReportsPage() {
     }
   }
 
-  const handlePrint = () => {
-    window.print()
+  const handleDownloadCSV = () => {
+    if (!hasData || !rawData) return
+
+    try {
+      const fileName = getReportFileName()
+      generateCSV(rawData, fileName)
+    } catch (error) {
+      console.error('Error al generar CSV:', error)
+      alert(`Error al generar el reporte CSV: ${error instanceof Error ? error.message : 'Error desconocido'}`)
+    }
   }
 
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Reportes LATAM</h1>
+        <h1 className="text-3xl font-bold text-foreground">Reportes - LATAM</h1>
         <p className="text-muted-foreground">Análisis y estadísticas de maletas dañadas</p>
       </div>
 
@@ -112,7 +134,7 @@ export function ReportsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Selector de Período</CardTitle>
-          <CardDescription>Elige el tipo de período y el rango para generar el reporte</CardDescription>
+          <CardDescription>Elige el tipo de período para generar el reporte</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4">
@@ -215,7 +237,7 @@ export function ReportsPage() {
       )}
 
       {/* Report Content */}
-      {hasReport && hasData && (
+      {hasReport && hasData && rawData && (
         <>
           {/* Report Header */}
           <Card>
@@ -244,13 +266,29 @@ export function ReportsPage() {
                       {isGeneratingPDF ? 'Generando...' : 'Descargar PDF'}
                     </span>
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2 bg-transparent">
-                    <Printer className="h-4 w-4" />
-                    <span className="hidden sm:inline">Imprimir</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadCSV}
+                    className="gap-2 bg-transparent"
+                  >
+                    <FileSpreadsheet className="h-4 w-4" />
+                    <span className="hidden sm:inline">Descargar CSV</span>
                   </Button>
                 </div>
               </div>
             </CardHeader>
+          </Card>
+
+          {/* Report Preview */}
+          <Card>
+            <CardContent className="p-6">
+              <ReportPreview
+                ref={reportRef}
+                records={rawData}
+                reportDate={periodValue}
+              />
+            </CardContent>
           </Card>
         </>
       )}
@@ -261,7 +299,7 @@ export function ReportsPage() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <FileText className="h-12 w-12 text-muted-foreground" />
             <h3 className="mt-4 text-lg font-semibold text-foreground">No hay reporte generado</h3>
-            <p className="mt-2 text-sm text-muted-foreground">Selecciona un período y presiona "Generar Reporte"</p>
+            <p className="mt-2 text-sm text-muted-foreground">Selecciona una opcion y presiona "Generar Reporte"</p>
           </CardContent>
         </Card>
       )}

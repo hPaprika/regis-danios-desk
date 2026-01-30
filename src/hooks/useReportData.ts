@@ -93,6 +93,10 @@ export const useReportData = (periodType: PeriodType, periodValue: string) => {
     const signedCount = filteredData.filter((r) => r.firma).length
     const signatureRate = filteredData.length > 0 ? Math.round((signedCount / filteredData.length) * 100) : 0
 
+    // Separar registros críticos (sin firma) y normales (con firma)
+    const criticalRecords = filteredData.filter((r) => !r.firma)
+    const normalRecords = filteredData.filter((r) => r.firma)
+
     // Turnos
     const shiftCounts: Record<string, number> = { 'BRC-ERC': 0, 'IRC-KRC': 0 }
     filteredData.forEach(r => {
@@ -109,6 +113,7 @@ export const useReportData = (periodType: PeriodType, periodValue: string) => {
       dominantShift,
       shiftCounts,
       topAirline: { name: 'LATAM', count: filteredData.length }, // Solo LATAM
+      criticalCount: criticalRecords.length, // Casos críticos
     }
 
     // Datos por turno para gráfico
@@ -142,6 +147,8 @@ export const useReportData = (periodType: PeriodType, periodValue: string) => {
       topFlights,
       hasData: filteredData.length > 0,
       rawData: filteredData,
+      criticalRecords, // Registros sin firma
+      normalRecords, // Registros con firma
     }
   }, [filteredData])
 
