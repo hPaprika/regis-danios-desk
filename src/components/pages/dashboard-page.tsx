@@ -401,7 +401,7 @@ export function DashboardPage() {
 
         {/* Grid layout (3x3) mapping: 1..3 = KPI cards, 4 = Charts Grid, 5-7 placeholders */}
         {!isLoading && filteredByDate.length > 0 && (
-          <div className="grid grid-cols-3 gap-4 auto-rows-[minmax(12rem,auto)] items-stretch">
+          <div className="grid grid-cols-3 grid-rows-auto gap-4">
             <div>
               <StatsCard
                 title={
@@ -453,15 +453,15 @@ export function DashboardPage() {
               />
             </div>
 
-            <div className="h-full">
+            <div className="">
               <ChartPieDonut data={signatureData} total={filteredByDate.length} />
             </div>
 
-            <div className="col-span-2 row-span-2 h-full">
+            <div className="col-span-2 row-span-2">
               <ChartBarMultiple data={shiftComparisonData} viewMode={viewMode} />
             </div>
 
-            <div className="h-full">
+            <div className="">
               <ChartBarHorizontal data={topFlightsData} />
             </div>
           </div>

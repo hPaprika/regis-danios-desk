@@ -43,21 +43,20 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export function ChartPieDonut({ data, total }: ChartPieDonutProps) {
-  // Calcular porcentaje de firmas
   const firmados = data.find(d => d.category === "Con Firma")?.count || 0
   const porcentajeFirmas = total > 0 ? Math.round((firmados / total) * 100) : 0
   const esBuenaTasa = porcentajeFirmas >= 80
 
   return (
-    <Card className="flex flex-col">
-      <CardHeader className="items-center pb-0">
+    <Card className="flex flex-col gap-0 py-4">
+      <CardHeader className="items-center justify-center text-center">
         <CardTitle>Comparativa de Firmas</CardTitle>
         <CardDescription>Registros firmados vs sin firmar</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 pb-0">
+      <CardContent>
         <ChartContainer
           config={chartConfig}
-          className="mx-auto aspect-square max-h-[250px]"
+          className="aspect-square w-30 h-30 mx-auto"
         >
           <PieChart>
             <ChartTooltip
@@ -68,7 +67,7 @@ export function ChartPieDonut({ data, total }: ChartPieDonutProps) {
               data={data}
               dataKey="count"
               nameKey="category"
-              innerRadius={60}
+              innerRadius={20}
             />
           </PieChart>
         </ChartContainer>
