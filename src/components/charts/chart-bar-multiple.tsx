@@ -53,7 +53,7 @@ export function ChartBarMultiple({ data, viewMode }: ChartBarMultipleProps) {
   }
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
         <CardTitle>{getTitle()}</CardTitle>
         <CardDescription>Registros por turno operativo</CardDescription>

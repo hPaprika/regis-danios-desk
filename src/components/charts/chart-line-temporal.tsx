@@ -8,7 +8,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
-// Interfaz para los registros de Siberia
 interface SiberiaRecord {
   id: string
   codigo: string
@@ -29,30 +28,28 @@ interface ChartLineTemporalProps {
 }
 
 export function ChartLineTemporal({ data, viewMode, selectedMonth }: ChartLineTemporalProps) {
-  // Procesar datos según el modo de vista
   const chartData = useMemo(() => {
+    const pad = (n: number) => n.toString().padStart(2, '0')
     if (viewMode === "today") {
-      // Para hoy: mostrar las 24 horas del día actual (00:00 - 23:59)
-
-      // Crear array de las 24 horas del día (00 - 23)
-      const hourlyData = Array.from({ length: 24 }, (_, i) => {
+      const hourlyData = Array.from({ length: 12 }, (_, i) => {
+        const hour = i * 2
         return {
-          hour: i,
-          label: i.toString().padStart(2, '0'),
+          hour,
+          label: hour.toString().padStart(2, '0'),
           count: 0
         }
       })
 
-      // Contar registros por hora solo del día actual
       data.forEach(record => {
         const recordDate = new Date(record.fecha_hora)
-        const recordDay = recordDate.toISOString().split('T')[0]
-        const todayDay = new Date().toISOString().split('T')[0]
+        const recordDay = `${recordDate.getFullYear()}-${pad(recordDate.getMonth() + 1)}-${pad(recordDate.getDate())}`
+        const today = new Date()
+        const todayDay = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`
 
-        // Solo contar si es del día actual
         if (recordDay === todayDay) {
           const recordHour = recordDate.getHours()
-          const hourData = hourlyData.find(h => h.hour === recordHour)
+          const bucketStart = Math.floor(recordHour / 2) * 2
+          const hourData = hourlyData.find(h => h.hour === bucketStart)
           if (hourData) {
             hourData.count++
           }
@@ -61,19 +58,20 @@ export function ChartLineTemporal({ data, viewMode, selectedMonth }: ChartLineTe
 
       return hourlyData.map(({ label, count }) => ({ label, count }))
     } else if (viewMode === "last7days") {
-      // Para últimos 7 días: mostrar por día
       const last7Days = Array.from({ length: 7 }, (_, i) => {
         const date = new Date()
         date.setDate(date.getDate() - (6 - i))
+        const localDate = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
         return {
-          date: date.toISOString().split('T')[0],
+          date: localDate,
           label: date.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }),
           count: 0
         }
       })
 
       data.forEach(record => {
-        const recordDate = new Date(record.fecha_hora).toISOString().split('T')[0]
+        const rd = new Date(record.fecha_hora)
+        const recordDate = `${rd.getFullYear()}-${pad(rd.getMonth() + 1)}-${pad(rd.getDate())}`
         const dayData = last7Days.find(d => d.date === recordDate)
         if (dayData) {
           dayData.count++
@@ -89,15 +87,17 @@ export function ChartLineTemporal({ data, viewMode, selectedMonth }: ChartLineTe
       const monthlyData = Array.from({ length: daysInMonth }, (_, i) => {
         const day = i + 1
         const date = new Date(year, month - 1, day)
+        const localDate = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
         return {
-          date: date.toISOString().split('T')[0],
+          date: localDate,
           label: day.toString(),
           count: 0
         }
       })
 
       data.forEach(record => {
-        const recordDate = new Date(record.fecha_hora).toISOString().split('T')[0]
+        const rd = new Date(record.fecha_hora)
+        const recordDate = `${rd.getFullYear()}-${pad(rd.getMonth() + 1)}-${pad(rd.getDate())}`
         const dayData = monthlyData.find(d => d.date === recordDate)
         if (dayData) {
           dayData.count++

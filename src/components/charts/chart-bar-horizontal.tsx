@@ -33,10 +33,10 @@ const chartConfig = {
 
 export function ChartBarHorizontal({ data }: ChartBarHorizontalProps) {
   return (
-    <Card>
+    <Card className="py-4 gap-3">
       <CardHeader>
         <CardTitle>Vuelos con Más Incidencias</CardTitle>
-        <CardDescription>Top 4 vuelos con mayor cantidad de daños</CardDescription>
+        <CardDescription>Top vuelos con mayor cantidad de daños</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig}>
@@ -47,6 +47,7 @@ export function ChartBarHorizontal({ data }: ChartBarHorizontalProps) {
             margin={{
               left: 0,
             }}
+            barCategoryGap="6%"
           >
             <XAxis type="number" dataKey="incidencias" hide />
             <YAxis
@@ -55,13 +56,13 @@ export function ChartBarHorizontal({ data }: ChartBarHorizontalProps) {
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              width={80}
+              width={50}
             />
             <ChartTooltip
               cursor={false}
               content={<ChartTooltipContent hideLabel />}
             />
-            <Bar dataKey="incidencias" fill="var(--color-incidencias)" radius={5} />
+            <Bar dataKey="incidencias" fill="var(--color-incidencias)" radius={5} barSize={35} />
           </BarChart>
         </ChartContainer>
       </CardContent>
